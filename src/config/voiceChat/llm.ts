@@ -13,35 +13,30 @@ import DeepSeekSVG from '@/assets/img/DeepSeek.svg';
  * @refer https://console.byteplus.com/ark/region:ark+ap-southeast-1/endpoint
  */
 export const ArkModel = {
-  'Skylark-pro': {
-    endPointId: 'Your model ID',
-    description: '128k, Trial supported',
+  'Seed-1.6': {
+    endPointId: 'seed-1-6-250915',
+    description: '32k, Trial supported',
     icon: ArkSVG,
   },
-  'Skylark-lite': {
-    endPointId: 'Your model ID',
+  'Seed-1.6-flash': {
+    endPointId: 'seed-1-6-flash-250715',
     description: '32k, Trial supported',
     icon: ArkSVG,
   },
   'DeepSeek-R1｜250528': {
-    endPointId: 'Your model ID',
+    endPointId: 'deepseek-r1-250528',
+    description: '16k, Trial supported',
+    icon: DeepSeekSVG,
+  },
+  'DeepSeek-V3.1｜250821': {
+    endPointId: 'deepseek-v3-1-250821',
     description: '32k, Trial supported',
     icon: DeepSeekSVG,
   },
-  'DeepSeek-R1｜250120': {
-    endPointId: 'Your model ID',
-    description: '32k, Trial supported',
-    icon: DeepSeekSVG,
-  },
-  'DeepSeek-V3｜250324': {
-    endPointId: 'Your model ID',
-    description: '128k, Trial supported',
-    icon: DeepSeekSVG,
-  },
-  'Deepseek-R1-Distill-Qwen-32b｜250120': {
-    endPointId: 'Your model ID',
-    description: '32k, Trial supported',
-    icon: DeepSeekSVG,
+  'Skylark-pro-sc｜250615': {
+    endPointId: 'skylark-pro-sc-250615',
+    description: '12k, Trial supported',
+    icon: ArkSVG,
   },
 };
 
@@ -67,7 +62,7 @@ export class LLMManager {
 
   systemMessages: string[] = [];
 
-  endPointId: string = ArkModel['Skylark-pro'].endPointId;
+  endPointId: string = ArkModel['Skylark-pro-sc｜250615'].endPointId;
 
   #paramsMap: {
     [Provider.Byteplus]: {
@@ -81,6 +76,7 @@ export class LLMManager {
        * @refer https://console.byteplus.com/ark/region:ark+ap-southeast-1/endpoint?s=g
        */
       APIKey?: string;
+      SystemMessages?: string[];
     };
     /**
      * @note Demo using OpenAI as example for CustomLLM.
@@ -115,7 +111,7 @@ export class LLMManager {
     this.#paramsMap = {
       [Provider.Byteplus]: {
         Mode: 'BytePlusArk',
-        EndPointId: ArkModel['Skylark-pro'].endPointId,
+        EndPointId: ArkModel['Skylark-pro-sc｜250615'].endPointId,
       },
       [Provider.OpenAI]: {
         Url: 'https://api.openai.com/v1/chat/completions',
@@ -134,6 +130,7 @@ export class LLMManager {
         this.#paramsMap[this.provider].ModelName = this.endPointId;
         break;
       case Provider.Byteplus:
+        this.#paramsMap[this.provider].SystemMessages = this.systemMessages;
         this.#paramsMap[this.provider].EndPointId = this.endPointId;
         break;
       default:

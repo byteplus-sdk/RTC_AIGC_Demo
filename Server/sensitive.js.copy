@@ -31,10 +31,16 @@ const ACCOUNT_INFO = {
 };
 
 /**
+ * @brief RTC AppID
+ * @refer https://console.byteplus.com/rtc/listRTC
+ */
+const RTC_APP_ID = 'Your RTC App ID';
+
+/**
  * @brief RTC AppKey
  * @refer https://console.byteplus.com/rtc/listRTC
  */
-const RTC_APP_KEY = 'Your RTC AppKey';
+const RTC_APP_KEY = 'Your RTC App Key';
 
 /**
  * @brief Sensitive fields in Flexible Mode (VoiceChat Mode).
@@ -65,12 +71,12 @@ const VOICE_CHAT_MODE = {
          * @note The AppId obtained on BytePlus ASR Console, used to identify the application.
          * @refer https://console.byteplus.com/voice/service/1000017
          */
-        AppId: 'Your AppId',
+        AppId: 'Your App ID',
         /**
          * @brief AccessToken obtained on BytePlus ASR Console, used for authentication.
          * @refer https://console.byteplus.com/voice/service/1000017
          */
-        AccessToken: 'Your AccessToken',
+        AccessToken: 'Your Access Token',
         /**
          * @brief The service plan type for the BytePlus ASR Model.
          * @note Fixed to volc.bigasr.sauc.duration
@@ -134,7 +140,7 @@ const VOICE_CHAT_MODE = {
        * @note APIKey. Acquire on View API Key.
        * @refer https://console.byteplus.com/ark/region:ark+ap-southeast-1/endpoint?config=%7B%7D
        */
-      APIKey: 'Your API Key',
+      APIKey: 'Your Ark API Key',
     },
   },
   // SubtitleConfig: {
@@ -204,6 +210,7 @@ module.exports = {
   ACCOUNT_INFO,
   VOICE_CHAT_MODE,
   REALTIME_API_MODE,
+  RTC_APP_ID,
   RTC_APP_KEY,
   injectSensitiveInfo,
 };

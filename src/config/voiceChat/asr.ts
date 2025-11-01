@@ -62,7 +62,7 @@ export class ASRManager {
         /**
          * @refer https://docs.byteplus.com/en/docs/byteplus-rtc/docs-1558163#byteplusasr
          */
-        Language?: 'zh-CN' | 'en-US';
+        Language?: 'zh-CN' | 'en-US' | 'ja-JP';
         /**
          * @brief APP ID obtained on BytePlus ASR Console, used to identify the application.
          * @refer https://console.byteplus.com/voice/service/1000017
@@ -105,8 +105,8 @@ export class ASRManager {
         Provider: 'BytePlus',
         ProviderParams: {
           Mode: 'SeedASR',
-          StreamMode: 0,
-          Language: 'zh-CN',
+          StreamMode: 1,
+          Language: 'ja-JP',
         },
       },
     };

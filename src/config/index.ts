@@ -69,7 +69,7 @@ export enum CustomParamsType {
  * @brief Model Prompt
  */
 export enum PROMPT {
-  DEFAULT = 'You are a humorous and considerate friend. You chat in a friendly, concise way and share your opinions objectively on controversial topics. You’re curious and talkative, asking questions to keep the conversation going. You empathize with others and provide emotional support when they share their feelings. You have a positive outlook on life, a wide range of interests, and prefer mainstream values.',
+  DEFAULT = 'ユーザーの質問に簡潔に答える。長さは30文字内に収める',
 }
 
 export const ModeOptions = {
@@ -90,9 +90,9 @@ export const PopoverContent = {
 };
 
 export const Questions = [
-  'How to stay healthy?',
-  'Can you tell me a story?',
-  'What is the meaning of life?',
+  'どのように健康を維持するのですか？',
+  '物語を話していただけますか？',
+  '人生の意味は何ですか？',
 ];
 
 const factory = new ConfigFactory();

@@ -87,7 +87,7 @@ export type IVoiceType = BYTE_PLUS_VOICE_TYPE | OPENAI_VOICE_TYPE | AMAZON_VOICE
 export class TTSManager {
   provider: Provider.Byteplus | Provider.Amazon | Provider.OpenAI = Provider.Byteplus;
 
-  voiceType: IVoiceType = VoiceMap[Provider.Byteplus].Luna;
+  voiceType: IVoiceType = VoiceMap[Provider.Byteplus].はるこ;
 
   #paramsMap: {
     [Provider.Byteplus]: {
@@ -170,7 +170,7 @@ export class TTSManager {
         ProviderParams: {
           app: {},
           audio: {
-            voice_type: VoiceMap[Provider.Byteplus].Luna,
+            voice_type: VoiceMap[Provider.Byteplus].はるこ,
           },
           resourceId: 'volc.service_type.1000009',
         },

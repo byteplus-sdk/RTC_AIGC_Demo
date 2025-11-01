@@ -1,0 +1,16 @@
+/**
+ * Copyright 2025 Beijing Volcano Engine Technology Co., Ltd. All Rights Reserved.
+ * SPDX-license-identifier: BSD-3-Clause
+ */
+
+/**
+ * @brief RTC AppID
+ * @refer https://console.byteplus.com/rtc/listRTC
+ */
+export const RTC_APP_ID = 'Your RTC App ID';
+
+/**
+ * @brief RTC AppKey (if needed for client-side operations)
+ * @refer https://console.byteplus.com/rtc/listRTC
+ */
+export const RTC_APP_KEY = 'your RTC App Key';

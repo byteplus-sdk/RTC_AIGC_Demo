@@ -14,7 +14,7 @@ This demo supports two operation modes with different configuration requirements
 ### 🔧 Flexible Mode (VoiceChat Mode)
 Allows independent configuration of ASR, LLM, and TTS components with multiple provider options.
 
-You need to fill the following fields into `VOICE_CHAT_MODE` in `./Server/sensitive.js` according to the ASR/LLM/TTS vendor you use.
+You need to copy `./Server/sensitive.js` to `./Server/sensitive.js` and fill the following fields into `VOICE_CHAT_MODE` in `./Server/sensitive.js` according to the ASR/LLM/TTS vendor you use.
 
 Besides, if using `BytePlusArk` as `LLM Module`, you need to fill the model endpoint ID in `ArkModel` (`File`: `src/config/voiceChat/llm.ts`), which could be gain from [BytePlus Ark Console](https://console.byteplus.com/ark/region:ark+ap-southeast-1/endpoint).
 
@@ -67,10 +67,8 @@ REALTIME_API_MODE
 - **Node Version: 16.0+**
 1. Two terminals are required to start the server and the front-end page respectively.
 
-2. **RTC Basic Configuration** (`src/config/config.ts`)
+2. **RTC Basic Configuration** (copy `src/config/constants.ts.copy` to `src/config/constants.ts`) and fill the following fields:
    - **AppId**: Your BytePlus RTC App ID (required)
-   - **RoomId**: Auto-generated UUID or custom room ID (optional)
-   - **UserId**: Auto-generated UUID or custom user ID (optional) 
    - **Token**: Token generated in [Byteplus Console](https://console.byteplus.com/rtc/listRTC) or leave it undefined for token auto-generation, demo will invoke api(defined in `./Server/app.js`) to generate token, which require your `RTC_APP_KEY` in `./Server/sensitive.js`.
 
 3. **Server Configuration** (`Server/sensitive.js`)
