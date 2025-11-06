@@ -81,6 +81,7 @@ export class LLMManager {
        * @refer https://console.byteplus.com/ark/region:ark+ap-southeast-1/endpoint?s=g
        */
       APIKey?: string;
+      SystemMessages?: string[];
     };
     /**
      * @note Demo using OpenAI as example for CustomLLM.
@@ -134,6 +135,7 @@ export class LLMManager {
         this.#paramsMap[this.provider].ModelName = this.endPointId;
         break;
       case Provider.Byteplus:
+        this.#paramsMap[this.provider].SystemMessages = this.systemMessages;
         this.#paramsMap[this.provider].EndPointId = this.endPointId;
         break;
       default:

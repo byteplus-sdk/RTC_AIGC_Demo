@@ -21,6 +21,7 @@ import utils from '@/utils/utils';
 import { isRealTimeCallMode } from '@/app/base';
 import { AMAZON_VOICE_TYPE, BYTE_PLUS_VOICE_TYPE, OPENAI_VOICE_TYPE } from '@/config/voiceChat/tts';
 import { ModelMap } from '@/config/voiceChat/llm';
+import { AvatarMap } from '@/config/voiceChat/avatar';
 import styles from './index.module.less';
 
 const formatOptions = (options: Provider[], provider?: Provider) =>
@@ -77,6 +78,29 @@ const formatModelTypeOptions = (options: {
   );
 };
 
+const formatAvatarTypeOptions = (options: {
+  [key in Provider]?: { [key: string]: any };
+}) => {
+  const result = Object.keys(options).reduce<Record<string, ReturnType<typeof formatOptions>>>(
+    (acc, key) => {
+      const provider = key as Provider;
+      const avatar = options[provider];
+      return {
+        ...acc,
+        [provider]: (Object.keys(avatar || {}) as Provider[]).map((option) => ({
+          key: option,
+          label: utils.capitalizeFirstLetter(option),
+          value: avatar![option].avatarRole,
+          icon: avatar![option].icon || VendorSVG[provider || option],
+          description: avatar![option].description || '',
+        })),
+      };
+    },
+    {}
+  );
+  return result;
+};
+
 function AISettings() {
   const dispatch = useDispatch();
   const room = useSelector((state: RootState) => state.room);
@@ -85,6 +109,8 @@ function AISettings() {
     'Provider.LLM': aigcConfig['Provider.LLM'],
     'Provider.TTS': aigcConfig['Provider.TTS'],
     'Provider.ASR': aigcConfig['Provider.ASR'],
+    'Provider.Avatar': aigcConfig['Provider.Avatar'],
+    avatar: aigcConfig.avatar,
     voice: aigcConfig.voice,
     endPointId: aigcConfig.endPointId,
     WelcomeMessage: aigcConfig.WelcomeMessage,
@@ -120,8 +146,16 @@ function AISettings() {
               allModels[key as keyof typeof allModels].endPointId === room.aiConfig.endPointId
           )}`,
           `ASR ${utils.capitalizeFirstLetter(room.aiConfig['Provider.ASR'])}`,
-        ];
-  }, [room.aiConfig.voice, room.aiConfig.endPointId, room.aiConfig['Provider.ASR']]);
+          room.aiConfig['Provider.Avatar'] !== Provider.None
+            ? `Avatar ${`${utils.capitalizeFirstLetter(room.aiConfig.avatar).substring(0, 12)}...`}`
+            : void 0,
+        ].filter(Boolean);
+  }, [
+    room.aiConfig.voice,
+    room.aiConfig.endPointId,
+    room.aiConfig['Provider.ASR'],
+    room.aiConfig['Provider.Avatar'],
+  ]);
 
   const handleClick = () => {
     setOpen(true);
@@ -273,6 +307,23 @@ function AISettings() {
                 data={formatOptions([Provider.Byteplus, Provider.Amazon])}
                 onChange={propsChangedHandler('Provider.ASR')}
                 value={data['Provider.ASR']}
+                moreProps={{
+                  icon: <IconSwap style={{ fontSize: '12px' }} />,
+                  text: 'Switch',
+                }}
+                placeHolder="Please select the vendor you need"
+              />
+            </TitleCard>
+          ) : null}
+          {!isRealTimeCallMode() ? (
+            <TitleCard title="Avatar Role">
+              <CheckBoxSelector
+                label="Avatar Role"
+                data={formatAvatarTypeOptions(AvatarMap)}
+                onChange={propsChangedHandler('avatar')}
+                onChecked={propsChangedHandler('Provider.Avatar')}
+                checked={data['Provider.Avatar']}
+                value={data.avatar}
                 moreProps={{
                   icon: <IconSwap style={{ fontSize: '12px' }} />,
                   text: 'Switch',

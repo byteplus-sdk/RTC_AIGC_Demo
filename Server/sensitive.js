@@ -137,6 +137,10 @@ const VOICE_CHAT_MODE = {
       APIKey: 'Your API Key',
     },
   },
+  AvatarConfig: {
+    AvatarAppID: 'Your Avatar App ID',
+    AvatarToken: 'Your Avatar Token',
+  },
   // SubtitleConfig: {
   //   /**
   //    * @brief Subtitle callback configuration.
@@ -185,6 +189,9 @@ const injectSensitiveInfo = (body, isVoiceChatMode) => {
         body.Config?.LLMConfig,
         VOICE_CHAT_MODE.LLMConfig[body.Config?.LLMConfig?.Mode]
       );
+    }
+    if (body?.Config?.AvatarConfig) {
+      body.Config.AvatarConfig = merge(body.Config?.AvatarConfig, VOICE_CHAT_MODE.AvatarConfig);
     }
     if (body?.Config?.SubtitleConfig) {
       body.Config.SubtitleConfig = merge(

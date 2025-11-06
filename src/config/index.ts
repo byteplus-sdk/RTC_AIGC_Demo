@@ -17,6 +17,7 @@ export const getEnvDomain = () => 'http://localhost:3001';
 export const AIGC_PROXY_HOST = getEnvDomain();
 
 export const VendorSVG = {
+  [Provider.None]: '',
   [Provider.Amazon]: AmazonSVG,
   [Provider.Google]: GoogleSVG,
   [Provider.OpenAI]: OpenAiSVG,

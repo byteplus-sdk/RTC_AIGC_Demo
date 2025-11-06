@@ -11,6 +11,9 @@ import Loading from '@/components/Loading/HorizonLoading';
 import Config from '@/config';
 import { Provider } from '@/config/basic';
 import { isRealTimeCallMode } from '@/app/base';
+import AIAvatarReadying from '@/components/AIAvatarLoading';
+import USER_AVATAR from '@/assets/img/UserAvatar.png';
+import CUSTOM_AVATAR from '@/assets/img/CustomAvatar.svg';
 import styles from './index.module.less';
 
 const lines: (string | React.ReactNode)[] = [];
@@ -30,6 +33,7 @@ function Conversation(props: React.HTMLAttributes<HTMLDivElement>) {
   // Only realtime & byteplus tts are supported.
   const isSupportedSubtitle =
     isRealTimeCallMode() || (!isRealTimeCallMode() && Config['Provider.TTS'] === Provider.Byteplus);
+  const isAvatarScene = Config.AvatarEnable;
 
   useEffect(() => {
     const container = containerRef.current;
@@ -39,64 +43,66 @@ function Conversation(props: React.HTMLAttributes<HTMLDivElement>) {
   }, [msgHistory.length, lastMsg?.value?.length]);
 
   return (
-    <div ref={containerRef} className={`${styles.conversation} ${className}`} {...rest}>
+    <div
+      ref={containerRef}
+      className={`${styles.conversation} ${className} ${isAvatarScene ? styles.fullScreen : ''}`}
+      style={isAvatarScene && !isAIReady ? { justifyContent: 'center' } : {}}
+      {...rest}
+    >
       {lines.map((line) => line)}
       {!isAIReady ? (
         <div className={styles.aiReadying}>
-          <Spin size={16} className={styles['aiReading-spin']} />
-          AI preparing...
+          {isAvatarScene ? (
+            <AIAvatarReadying />
+          ) : (
+            <>
+              <Spin size={16} className={styles['aiReading-spin']} />
+              AI preparing...
+            </>
+          )}
         </div>
       ) : (
-        <div className={styles.notification}>
-          <div className={styles.title}>
-            You can speak to me directly, for example, try asking the following questions:
-          </div>
-          <div className={styles.tips}>
-            {[
-              'How to develop good habits for a healthy lifestyle?',
-              'What problems can you help me solve?',
-              'Please tell me a story.',
-              'What are your hobbies?',
-              'Why is the sky blue?',
-            ].map((tip) => (
-              <div key={tip} className={styles.tip}>
-                {tip}
-              </div>
-            ))}
-          </div>
-        </div>
+        ''
       )}
       {isSupportedSubtitle &&
         msgHistory?.map(({ value, user, isInterrupted }, index) => {
           const isUserMsg = user === userId;
-          const isRobotMsg = user === Config.BotName;
+          const isRobotMsg = user === Config.BotName || user.includes('voiceChat_');
           if (!isUserMsg && !isRobotMsg) {
             return '';
           }
           return (
-            <div
-              className={`${styles.sentence} ${isUserMsg ? styles.user : styles.robot}`}
-              key={`msg-${index}`}
-            >
-              <div className={styles.content}>
-                {value}
-                <div className={styles['loading-wrapper']}>
-                  {/* Realtime non-streaming mode */}
-                  {!isRealTimeCallMode() &&
-                  isAIReady &&
-                  (isUserTalking || isAITalking) &&
-                  index === msgHistory.length - 1 ? (
-                    <Loading gap={3} className={styles.loading} dotClassName={styles.dot} />
-                  ) : (
-                    ''
-                  )}
+            <div key={`msg-container-${index}`} className={styles.mobileLine}>
+              <div className={styles.msgName}>
+                <div className={styles.avatar}>
+                  <img src={isUserMsg ? USER_AVATAR : CUSTOM_AVATAR} alt="Avatar" />
                 </div>
+                {isUserMsg ? 'ME' : 'AI'}
               </div>
-              {!isUserMsg && isInterrupted ? (
-                <Tag className={styles.interruptTag}>Interrupted</Tag>
-              ) : (
-                ''
-              )}
+              <div
+                className={`${styles.sentence} ${isUserMsg ? styles.user : styles.robot}`}
+                key={`msg-${index}`}
+              >
+                <div className={styles.content}>
+                  {value}
+                  <div className={styles['loading-wrapper']}>
+                    {/* Realtime non-streaming mode */}
+                    {!isRealTimeCallMode() &&
+                    isAIReady &&
+                    (isUserTalking || isAITalking) &&
+                    index === msgHistory.length - 1 ? (
+                      <Loading gap={3} className={styles.loading} dotClassName={styles.dot} />
+                    ) : (
+                      ''
+                    )}
+                  </div>
+                </div>
+                {!isUserMsg && isInterrupted ? (
+                  <Tag className={styles.interruptTag}>Interrupted</Tag>
+                ) : (
+                  ''
+                )}
+              </div>
             </div>
           );
         })}

@@ -89,12 +89,34 @@ export class ConfigFactory {
     return isRealTimeCallMode() ? Provider.OpenAI : this.#voiceChatManager.tts.provider;
   }
 
+  set 'Provider.Avatar'(value: Provider) {
+    if (this.#manager instanceof RealTimeConfig) {
+      return;
+    }
+    this.#manager.setProvider(ModuleType.Avatar, value);
+  }
+
+  get 'Provider.Avatar'() {
+    return isRealTimeCallMode() ? Provider.None : this.#voiceChatManager.avatar.provider;
+  }
+
   set voice(value: IVoiceType) {
     this.#manager.voice = value;
   }
 
   get voice() {
     return this.#manager.voice;
+  }
+
+  set avatar(value) {
+    if (isRealTimeCallMode()) {
+      return;
+    }
+    this.#voiceChatManager.avatarRoleId = value;
+  }
+
+  get avatar() {
+    return isRealTimeCallMode() ? '' : this.#voiceChatManager.avatarRoleId;
   }
 
   set endPointId(value: string) {
@@ -106,6 +128,21 @@ export class ConfigFactory {
 
   get endPointId() {
     return isRealTimeCallMode() ? '' : this.#voiceChatManager.endPointId;
+  }
+
+  set BackgroundUrl(value: string) {
+    if (isRealTimeCallMode()) {
+      return;
+    }
+    this.#voiceChatManager.avatar.backgroundUrl = value;
+  }
+
+  get BackgroundUrl() {
+    return isRealTimeCallMode() ? '' : this.#voiceChatManager.avatar.backgroundUrl;
+  }
+
+  get AvatarEnable() {
+    return this.#voiceChatManager.avatar.provider !== Provider.None;
   }
 
   /**

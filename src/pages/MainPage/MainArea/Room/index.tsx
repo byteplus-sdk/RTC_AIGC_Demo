@@ -3,15 +3,22 @@
  * SPDX-license-identifier: BSD-3-Clause
  */
 
+import { useSelector } from 'react-redux';
 import Conversation from './Conversation';
 import ToolBar from './ToolBar';
 import AudioController from './AudioController';
 import utils from '@/utils/utils';
+import FullScreenCard from '@/components/FullScreenCard';
+import { RootState } from '@/store';
+import Config from '@/config';
 import style from './index.module.less';
 
 function Room() {
+  const isFullScreen = useSelector((state: RootState) => state.room.isFullScreen);
+  const isAvatarScene = Config.AvatarEnable;
   return (
     <div className={`${style.wrapper} ${utils.isMobile() ? style.mobile : ''}`}>
+      {isFullScreen || isAvatarScene ? <FullScreenCard /> : ''}
       <Conversation className={style.conversation} />
       <ToolBar className={style.toolBar} />
       <AudioController className={style.controller} />

@@ -45,11 +45,15 @@ VOICE_CHAT_MODE
 │       └── APIKey (OpenAI API Key)
 │
 └── LLMConfig (Large Language Model)
-    ├── CustomLLM (OpenAI Compatible)
-    │   ├── Url (API Endpoint)
-    │   └── APIKey (API Key)
-    └── BytePlusArk
-        └── APIKey (BytePlus Ark API Key)
+│   ├── CustomLLM (OpenAI Compatible)
+│   │   ├── Url (API Endpoint)
+│   │   └── APIKey (API Key)
+│   └── BytePlusArk
+│       └── APIKey (BytePlus Ark API Key)
+│ 
+└── AvatarConfig
+    ├── AvatarAppID
+    └── AvatarToken
 ```
 
 ### ⚡ Realtime Mode
@@ -77,7 +81,7 @@ REALTIME_API_MODE
    - **RTC Basic Configuration**: Configure `RTC_APP_KEY` if you want to auto generate token in server.
    - **API Provider Credentials**:
      - **Flexible Mode**:
-        - Configure `ASR`, `TTS`, and `LLM` provider credentials as shown in the configuration tree above.
+        - Configure `ASR`, `TTS`, `LLM`, and `Avatar` ( if enabled ) provider credentials as shown in the configuration tree above.
         - If using `BytePlusArk` as `LLM Module`, you need to fill the model endpoint ID in `ArkModel` (`File`: `src/config/voiceChat/llm.ts`), which could be gain from [BytePlus Ark Console](https://console.byteplus.com/ark/region:ark+ap-southeast-1/endpoint).
      - **Realtime Mode**: Only requires OpenAI `APIKey` in `LLMConfig.Token`.
 
@@ -144,6 +148,9 @@ Refer to [OpenAPI Updates](https://docs.byteplus.com/en/docs/byteplus-rtc/docs-1
 ### Release Notes
 
 #### [1.4.0]
+- 2025-11-06
+    - Support BytePlus Avatar
+
 - 2025-08-04
     - Upgrade SDK version to 4.67.2
     - Support BytePlus ASR（Speech-to-Text (ASR) - Streaming）

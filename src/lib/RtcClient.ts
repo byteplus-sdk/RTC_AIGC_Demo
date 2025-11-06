@@ -17,6 +17,7 @@ import VERTC, {
   RemoteAudioPropertiesInfo,
   DeviceInfo,
   NetworkQuality,
+  VideoRenderMode,
 } from '@byteplus/rtc';
 import { Message } from '@arco-design/web-react';
 import RTCAIAnsExtension from '@byteplus/rtc/extension-ainr';
@@ -278,6 +279,18 @@ export class RtcClient {
       this.engine.setVideoCaptureDevice(deviceId);
       this.engine.setAudioCaptureDevice(deviceId);
     }
+  };
+
+  setRemoteVideoPlayer = (
+    userId: string,
+    renderDom?: string | HTMLElement,
+    renderMode = VideoRenderMode.RENDER_MODE_HIDDEN
+  ) => {
+    return this.engine.setRemoteVideoPlayer(StreamIndex.STREAM_INDEX_MAIN, {
+      renderDom,
+      userId,
+      renderMode,
+    });
   };
 
   /**

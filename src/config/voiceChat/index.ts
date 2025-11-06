@@ -6,6 +6,7 @@
 import { LLMManager } from './llm';
 import { ASRManager } from './asr';
 import { TTSManager } from './tts';
+import { AvatarManager } from './avatar';
 import { ModuleType, Provider } from '../basic';
 
 /**
@@ -19,10 +20,13 @@ export class VoiceChatManager {
 
   tts: TTSManager;
 
+  avatar: AvatarManager;
+
   constructor() {
     this.llm = new LLMManager();
     this.asr = new ASRManager();
     this.tts = new TTSManager();
+    this.avatar = new AvatarManager();
   }
 
   setProvider(module: ModuleType, provider: Provider) {
@@ -45,6 +49,14 @@ export class VoiceChatManager {
     return this.llm.endPointId;
   }
 
+  set avatarRoleId(value: string) {
+    this.avatar.avatarRoleId = value;
+  }
+
+  get avatarRoleId() {
+    return this.avatar.avatarRoleId;
+  }
+
   set systemMessages(value: string[]) {
     this.llm.systemMessages = value || [];
   }
@@ -55,6 +67,10 @@ export class VoiceChatManager {
         LLMConfig: this.llm.value,
         ASRConfig: this.asr.value,
         TTSConfig: this.tts.value,
+        AvatarConfig: this.avatar.value,
+        SubtitleConfig: {
+          SubtitleMode: this.avatar.value.Enabled ? 1 : 0,
+        },
       },
     };
   }

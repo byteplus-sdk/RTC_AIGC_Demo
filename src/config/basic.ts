@@ -4,6 +4,7 @@
  */
 
 export enum Provider {
+  None = 'none',
   OpenAI = 'openai',
   Amazon = 'amazon',
   Google = 'google',
@@ -14,4 +15,5 @@ export enum ModuleType {
   LLM = 'llm',
   TTS = 'tts',
   ASR = 'asr',
+  Avatar = 'avatar',
 }

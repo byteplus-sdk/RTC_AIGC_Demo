@@ -32,6 +32,7 @@ import RtcClient, { IEventListener } from './RtcClient';
 
 import { setMicrophoneList, updateSelectedDevice } from '@/store/slices/device';
 import { useMessageHandler } from '@/utils/handler';
+import store from '@/store';
 
 const useRtcListeners = (): IEventListener => {
   const dispatch = useDispatch();
@@ -66,9 +67,18 @@ const useRtcListeners = (): IEventListener => {
     const { userId, mediaType } = e;
     const payload: IUser = { userId };
     if (mediaType === MediaType.AUDIO) {
-      /** Unused */
+      payload.publishAudio = true;
+    } else if (mediaType === MediaType.VIDEO) {
+      payload.publishVideo = true;
+    } else if (mediaType === MediaType.AUDIO_AND_VIDEO) {
+      payload.publishAudio = true;
+      payload.publishVideo = true;
     }
-    payload.publishAudio = true;
+    const isFullScreen = store.getState().room.isFullScreen;
+    RtcClient.setRemoteVideoPlayer(
+      userId,
+      isFullScreen ? 'remote-video-player' : 'remote-full-player'
+    );
     dispatch(updateRemoteUser(payload));
   };
 
@@ -86,8 +96,10 @@ const useRtcListeners = (): IEventListener => {
 
     if (mediaType === MediaType.AUDIO_AND_VIDEO) {
       payload.publishAudio = false;
+      payload.publishVideo = false;
     }
 
+    RtcClient.setRemoteVideoPlayer(userId);
     dispatch(updateRemoteUser(payload));
   };
 

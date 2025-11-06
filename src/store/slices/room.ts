@@ -66,6 +66,10 @@ export interface RoomState {
    */
   isUserTalking: boolean;
   /**
+   * @brief Whether the room is in full screen mode.
+   */
+  isFullScreen: boolean;
+  /**
    * @brief Basic AI configuration.
    */
   aiConfig: ConfigFactory;
@@ -109,6 +113,7 @@ const initialState: RoomState = {
   isAIGCEnable: false,
   isAITalking: false,
   isUserTalking: false,
+  isFullScreen: false,
   networkQuality: NetworkQuality.UNKNOWN,
 
   aiConfig: config,
@@ -211,6 +216,9 @@ export const roomSlice = createSlice({
     updateAITalkState: (state, { payload }) => {
       state.isAITalking = payload.isAITalking;
     },
+    updateFullScreen: (state, { payload }) => {
+      state.isFullScreen = payload.isFullScreen;
+    },
     updateAIConfig: (state, { payload }) => {
       state.aiConfig = Object.assign(state.aiConfig, payload);
     },
@@ -224,12 +232,16 @@ export const roomSlice = createSlice({
       const { paragraph, definite } = payload;
       const lastMsg = state.msgHistory.at(-1)! || {};
       /** Whether need to create a new sentence */
-      const fromBot = payload.user === config.BotName;
+      const fromBot = payload.user === config.BotName || payload.user.includes('voiceChat_');
       /**
-       * Bot's sentences use definite to determine whether to append new content
+       * Bot's sentences:
+       *  1. use definite to determine whether to append new content when SubtitleMode = 0 (which is the default value when avatar is disabled)
+       *  2. use paragraph to determine whether to append new content when SubtitleMode = 1 (which is the default value when avatar is enabled)
        * User's sentences use paragraph to determine whether to append new content
        */
-      const lastMsgCompleted = fromBot ? lastMsg.definite : lastMsg.paragraph;
+      const currentSubtitleMode = config.AvatarEnable ? 1 : 0;
+      const lastMsgCompleted =
+        !fromBot || currentSubtitleMode ? lastMsg.paragraph : lastMsg.definite;
 
       if (state.msgHistory.length) {
         /** If the last sentence is complete, add a new sentence */
@@ -243,7 +255,11 @@ export const roomSlice = createSlice({
           });
         } else {
           /** Speech not finished, update text content */
-          lastMsg.value = payload.text;
+          if (fromBot && currentSubtitleMode) {
+            lastMsg.value += payload.text;
+          } else {
+            lastMsg.value = payload.text;
+          }
           lastMsg.time = new Date().toString();
           lastMsg.paragraph = paragraph;
           lastMsg.definite = definite;
@@ -290,6 +306,7 @@ export const {
   clearAutoPlayFail,
   updateAIGCState,
   updateAITalkState,
+  updateFullScreen,
   updateAIConfig,
   updateNetworkQuality,
   updateCallMode,
