@@ -40,19 +40,19 @@ app.use(async (ctx) => {
 
     /** Refer to https://www.npmjs.com/package/@byteplus/vcloud-sdk-nodejs to get more information. */
     const openApiRequestDataRTC = {
-      region: 'ap-singapore-1',
+      region: 'ap-southeast-1',
       method: 'POST',
       params: {
         Action: action,
         Version: '2025-05-01',
       },
       headers: {
-        Host: 'open.byteplusapi.com',
+        Host: 'rtc.ap-southeast-1.byteplusapi.com',
         'Content-Type': 'application/json',
       },
     };
     const rtcSigner = new Signer(openApiRequestDataRTC, 'rtc');
-    const rtcSignedUri = `https://open.byteplusapi.com?${rtcSigner.getSignUrl(ACCOUNT_INFO)}`;
+    const rtcSignedUri = `https://rtc.ap-southeast-1.byteplusapi.com?${rtcSigner.getSignUrl(ACCOUNT_INFO)}`;
 
     /** Refer to https://docs.byteplus.com/en/docs/byteplus-rtc/docs-69828 to get more information. */
     const result = await fetch(rtcSignedUri, {

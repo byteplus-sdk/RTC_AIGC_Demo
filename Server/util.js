@@ -20,7 +20,7 @@ const isVoiceChatMode = (apiName) => ['StartVoiceChat', 'StopVoiceChat'].include
  */
 const getSessionToken = async () => {
   const openApiRequestDataSTS = {
-    region: 'ap-singapore-1',
+    region: 'ap-southeast-1',
     method: 'GET',
     params: {
       Action: 'AssumeRole',
@@ -29,12 +29,12 @@ const getSessionToken = async () => {
       RoleSessionName: SUB_ACCOUNT_NAME,
     },
     headers: {
-      Host: 'open.byteplusapi.com',
+      Host: 'sts.ap-southeast-1.byteplusapi.com',
       'Content-Type': 'application/x-www-form-urlencoded',
     },
   };
   const signer = new Signer(openApiRequestDataSTS, 'sts');
-  const stsSignedUri = `https://open.byteplusapi.com?${signer.getSignUrl({
+  const stsSignedUri = `https://sts.ap-southeast-1.byteplusapi.com?${signer.getSignUrl({
     accessKeyId: ACCOUNT_INFO.accessKeyId,
     secretKey: ACCOUNT_INFO.secretKey,
   })}`;

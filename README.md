@@ -148,6 +148,8 @@ Refer to [OpenAPI Updates](https://docs.byteplus.com/en/docs/byteplus-rtc/docs-1
 ### Release Notes
 
 #### [1.4.0]
+- 2026-01-27
+    - Upgrade API endpoints and region
 - 2025-11-06
     - Support BytePlus Avatar
 
