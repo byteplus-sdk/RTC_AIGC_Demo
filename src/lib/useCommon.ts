@@ -184,10 +184,10 @@ export const useLeave = () => {
 
   return async function () {
     try {
-      dispatch(localLeaveRoom());
       dispatch(updateAIGCState({ isAIGCEnable: false }));
-      await Promise.all([RtcClient.stopAudioCapture]);
-      RtcClient.leaveRoom();
+      await RtcClient.stopAudioCapture();
+      await RtcClient.leaveRoom();
+      dispatch(localLeaveRoom());
       dispatch(clearHistoryMsg());
     } catch (e) {
       logger.debug('leaveRoom error', e);

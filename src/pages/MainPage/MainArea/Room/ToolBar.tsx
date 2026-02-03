@@ -18,10 +18,19 @@ import LeaveRoomSVG from '@/assets/img/LeaveRoom.svg';
 function ToolBar(props: React.HTMLAttributes<HTMLDivElement>) {
   const { className, ...rest } = props;
   const [open, setOpen] = useState(false);
+  const [leaving, setLeaving] = useState(false);
   const leaveRoom = useLeave();
   const { isAudioPublished, switchMic } = useDeviceState();
   const handleSetting = () => {
     setOpen(true);
+  };
+  const handleLeaveRoom = async () => {
+    if (leaving) {
+      return;
+    }
+    setLeaving(true);
+    await leaveRoom();
+    setLeaving(false);
   };
   return (
     <div className={`${className} ${style.btns} ${utils.isMobile() ? style.column : ''}`} {...rest}>
@@ -34,7 +43,13 @@ function ToolBar(props: React.HTMLAttributes<HTMLDivElement>) {
         className={style.btn}
         alt="mic"
       />
-      <img src={LeaveRoomSVG} onClick={leaveRoom} className={style.btn} alt="leave" />
+      <img
+        src={LeaveRoomSVG}
+        style={{ cursor: leaving ? 'not-allowed' : 'pointer', opacity: leaving ? 0.5 : 1 }}
+        onClick={handleLeaveRoom}
+        className={style.btn}
+        alt="leave"
+      />
       {utils.isMobile() ? (
         <Drawer
           title=" Settings"

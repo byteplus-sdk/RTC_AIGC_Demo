@@ -155,9 +155,9 @@ export class RtcClient {
     );
   };
 
-  leaveRoom = () => {
-    this.stopAgent();
-    this.engine.leaveRoom();
+  leaveRoom = async () => {
+    await this.stopAgent();
+    await this.engine.leaveRoom();
     VERTC.destroyEngine(this.engine);
     this.#audioCaptureDevice = undefined;
   };
