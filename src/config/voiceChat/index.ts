@@ -7,6 +7,8 @@ import { LLMManager } from './llm';
 import { ASRManager } from './asr';
 import { TTSManager } from './tts';
 import { AvatarManager } from './avatar';
+import { WebSearchManager } from './webSearchManager';
+import { McpManager } from './mcpManager';
 import { ModuleType, Provider } from '../basic';
 
 /**
@@ -22,15 +24,21 @@ export class VoiceChatManager {
 
   avatar: AvatarManager;
 
+  webSearch: WebSearchManager;
+
+  mcp: McpManager;
+
   constructor() {
     this.llm = new LLMManager();
     this.asr = new ASRManager();
     this.tts = new TTSManager();
     this.avatar = new AvatarManager();
+    this.webSearch = new WebSearchManager();
+    this.mcp = new McpManager();
   }
 
   setProvider(module: ModuleType, provider: Provider) {
-    this[module].provider = provider;
+    (this[module] as { provider: Provider }).provider = provider;
   }
 
   set voice(value: typeof this.tts.voiceType) {
@@ -62,15 +70,19 @@ export class VoiceChatManager {
   }
 
   get config() {
+    const llmConfig = this.llm.value;
+    this.mcp.applyToLlmRow(this.llm.provider, llmConfig);
+    const webSearch = this.webSearch.getPayload(this.llm.provider);
     return {
       Config: {
-        LLMConfig: this.llm.value,
+        LLMConfig: llmConfig,
         ASRConfig: this.asr.value,
         TTSConfig: this.tts.value,
         AvatarConfig: this.avatar.value,
         SubtitleConfig: {
           SubtitleMode: this.avatar.value.Enabled ? 1 : 0,
         },
+        ...(webSearch ? { WebSearchAgentConfig: webSearch } : {}),
       },
     };
   }

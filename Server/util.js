@@ -10,6 +10,11 @@ const Privileges = require('./token').privileges;
 
 const { ACCOUNT_ID, SUB_ACCOUNT_NAME, ACCOUNT_INFO } = require('./sensitive');
 
+const stsAssumeRoleSigningCreds = {
+  accessKeyId: ACCOUNT_INFO.accessKeyId,
+  secretKey: ACCOUNT_INFO.secretKey,
+};
+
 /**
  * @brief Judge whether the api is belong to voice chat mode.
  */
@@ -34,10 +39,9 @@ const getSessionToken = async () => {
     },
   };
   const signer = new Signer(openApiRequestDataSTS, 'sts');
-  const stsSignedUri = `https://sts.ap-southeast-1.byteplusapi.com?${signer.getSignUrl({
-    accessKeyId: ACCOUNT_INFO.accessKeyId,
-    secretKey: ACCOUNT_INFO.secretKey,
-  })}`;
+  const stsSignedUri = `https://sts.ap-southeast-1.byteplusapi.com?${signer.getSignUrl(
+    stsAssumeRoleSigningCreds
+  )}`;
   const sts = await fetch(stsSignedUri, {
     method: 'GET',
     headers: openApiRequestDataSTS.headers,

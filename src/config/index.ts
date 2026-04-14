@@ -20,8 +20,12 @@ export const VendorSVG = {
   [Provider.None]: '',
   [Provider.Amazon]: AmazonSVG,
   [Provider.Google]: GoogleSVG,
+  [Provider.GoogleAsrV1]: GoogleSVG,
+  [Provider.GoogleAsrV2]: GoogleSVG,
   [Provider.OpenAI]: OpenAiSVG,
   [Provider.Byteplus]: ArkSVG,
+  /** Custom LLM mode uses OpenAI-compatible stack; reuse icon for UI selectors. */
+  [Provider.CustomLLM]: OpenAiSVG,
 };
 
 export const ArkVoiceDescription: Partial<Record<BYTE_PLUS_VOICE_TYPE, string>> = {

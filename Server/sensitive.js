@@ -34,7 +34,12 @@ const ACCOUNT_INFO = {
  * @brief RTC AppKey
  * @refer https://console.byteplus.com/rtc/listRTC
  */
-const RTC_APP_KEY = 'Your RTC AppKey';
+const RTC_APP_KEY = 'Your RTC App Key';
+
+/**
+ * @brief AskEcho Search Agent API key (injected into `WebSearchAgentConfig.APIKey` when enabled).
+ */
+const AskEchoSearchAgentAPIKey = 'Your AskEcho API Key';
 
 /**
  * @brief Sensitive fields in Flexible Mode (VoiceChat Mode).
@@ -59,6 +64,15 @@ const VOICE_CHAT_MODE = {
          * @refer https://cloud.google.com/docs/authentication/application-default-credentials#GAC
          */
         CredentialsJSON: 'Your Credentials JSON',
+      },
+      /** Google Cloud Speech-to-Text v1 (`ASRConfig.Provider` = `Google`). */
+      Google: {
+        CredentialsJSON: 'Your Credentials JSON',
+      },
+      /** Google Cloud Speech-to-Text v2 (`ASRConfig.Provider` = `GoogleV2`). */
+      GoogleV2: {
+        CredentialsJSON: 'Your Credentials JSON',
+        RecognizerPath: 'Your Recognizer Path',
       },
       BytePlus: {
         /**
@@ -120,6 +134,13 @@ const VOICE_CHAT_MODE = {
          */
         APIKey: 'Your OpenAI API Key',
       },
+      /** Google Cloud Text-to-Speech (`TTSConfig.Provider` = `Google`, rtc-aigc-demo shape). */
+      Google: {
+        /**
+         * @refer https://cloud.google.com/docs/authentication/application-default-credentials#GAC
+         */
+        CredentialsJSON: 'Your Credentials JSON',
+      },
     },
   },
   LLMConfig: {
@@ -162,6 +183,10 @@ const REALTIME_API_MODE = {
      */
     Token: 'Your OpenAI Token',
   },
+  AvatarConfig: {
+    AvatarAppID: 'Your Realtime Avatar App ID',
+    AvatarToken: 'Your Realtime Avatar Token',
+  },
 };
 
 /**
@@ -199,9 +224,18 @@ const injectSensitiveInfo = (body, isVoiceChatMode) => {
         VOICE_CHAT_MODE.SubtitleConfig
       );
     }
+    const webSearch = body?.Config?.WebSearchAgentConfig;
+    if (webSearch?.Enable === true && AskEchoSearchAgentAPIKey) {
+      body.Config.WebSearchAgentConfig = merge(webSearch, {
+        APIKey: AskEchoSearchAgentAPIKey,
+      });
+    }
   } else {
     /** Inject realtime mode sensitive info */
     body.LLMConfig && (body.LLMConfig = merge(body.LLMConfig, REALTIME_API_MODE.LLMConfig));
+    if (body?.AvatarConfig) {
+      body.AvatarConfig = merge(body.AvatarConfig, REALTIME_API_MODE.AvatarConfig);
+    }
   }
 };
 
@@ -212,5 +246,6 @@ module.exports = {
   VOICE_CHAT_MODE,
   REALTIME_API_MODE,
   RTC_APP_KEY,
+  AskEchoSearchAgentAPIKey,
   injectSensitiveInfo,
 };

@@ -40,7 +40,7 @@ export class AvatarManager {
     AvatarMap[Provider.Byteplus][BYTE_PLUS_AVATAR_TYPE.Linyunzhi].avatarRole;
 
   backgroundUrl =
-    'https://cdn-tos-cn.bytedance.net/obj/archi/aigc/static/image/CHILDREN_ENCYCLOPEDIA_BG.c1d3284c.png';
+    'https://mediaservice-fe.volccdn.com/obj/vcloud-fe/aigc/static/image/CHILDREN_ENCYCLOPEDIA_BG.c1d3284c.png';
 
   #paramsMap: {
     [Provider.None]: {

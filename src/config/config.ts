@@ -7,9 +7,10 @@ import { isRealTimeCallMode } from '@/app/base';
 import { PROMPT } from '.';
 import { RealTimeConfig } from './realTime';
 import { VoiceChatManager } from './voiceChat';
-import { ModuleType, Provider } from './basic';
+import { isLlmProviderAllowedForWebSearch, ModuleType, Provider } from './basic';
 
 import type { IVoiceType } from './voiceChat/tts';
+import type { LlmCustomMcpEntry } from './voiceChat/mcpManager';
 
 export class ConfigFactory {
   #realTimeManager: RealTimeConfig;
@@ -61,6 +62,9 @@ export class ConfigFactory {
       return;
     }
     this.#manager.setProvider(ModuleType.LLM, value);
+    if (!isLlmProviderAllowedForWebSearch(value)) {
+      this.#voiceChatManager.webSearch.enabled = false;
+    }
   }
 
   get 'Provider.LLM'() {
@@ -91,13 +95,16 @@ export class ConfigFactory {
 
   set 'Provider.Avatar'(value: Provider) {
     if (this.#manager instanceof RealTimeConfig) {
+      this.#realTimeManager.setProvider(ModuleType.Avatar, value);
       return;
     }
     this.#manager.setProvider(ModuleType.Avatar, value);
   }
 
   get 'Provider.Avatar'() {
-    return isRealTimeCallMode() ? Provider.None : this.#voiceChatManager.avatar.provider;
+    return isRealTimeCallMode()
+      ? this.#realTimeManager.avatar.provider
+      : this.#voiceChatManager.avatar.provider;
   }
 
   set voice(value: IVoiceType) {
@@ -110,13 +117,16 @@ export class ConfigFactory {
 
   set avatar(value) {
     if (isRealTimeCallMode()) {
+      this.#realTimeManager.avatarRoleId = value;
       return;
     }
     this.#voiceChatManager.avatarRoleId = value;
   }
 
   get avatar() {
-    return isRealTimeCallMode() ? '' : this.#voiceChatManager.avatarRoleId;
+    return isRealTimeCallMode()
+      ? this.#realTimeManager.avatarRoleId
+      : this.#voiceChatManager.avatarRoleId;
   }
 
   set endPointId(value: string) {
@@ -132,17 +142,50 @@ export class ConfigFactory {
 
   set BackgroundUrl(value: string) {
     if (isRealTimeCallMode()) {
+      this.#realTimeManager.avatar.backgroundUrl = value;
       return;
     }
     this.#voiceChatManager.avatar.backgroundUrl = value;
   }
 
   get BackgroundUrl() {
-    return isRealTimeCallMode() ? '' : this.#voiceChatManager.avatar.backgroundUrl;
+    return isRealTimeCallMode()
+      ? this.#realTimeManager.avatar.backgroundUrl
+      : this.#voiceChatManager.avatar.backgroundUrl;
+  }
+
+  set LLMWebSearchEnabled(value: boolean) {
+    if (isRealTimeCallMode()) {
+      this.#voiceChatManager.webSearch.enabled = false;
+      return;
+    }
+    if (value && !isLlmProviderAllowedForWebSearch(this.#voiceChatManager.llm.provider)) {
+      this.#voiceChatManager.webSearch.enabled = false;
+      return;
+    }
+    this.#voiceChatManager.webSearch.enabled = value;
+  }
+
+  get LLMWebSearchEnabled() {
+    return isRealTimeCallMode() ? false : this.#voiceChatManager.webSearch.enabled;
+  }
+
+  set CustomMcpList(value: LlmCustomMcpEntry[]) {
+    if (isRealTimeCallMode()) {
+      this.#voiceChatManager.mcp.customMcpList = [];
+      return;
+    }
+    this.#voiceChatManager.mcp.customMcpList = Array.isArray(value) ? value : [];
+  }
+
+  get CustomMcpList(): LlmCustomMcpEntry[] {
+    return isRealTimeCallMode() ? [] : this.#voiceChatManager.mcp.customMcpList;
   }
 
   get AvatarEnable() {
-    return this.#voiceChatManager.avatar.provider !== Provider.None;
+    return isRealTimeCallMode()
+      ? this.#realTimeManager.avatar.provider !== Provider.None
+      : this.#voiceChatManager.avatar.provider !== Provider.None;
   }
 
   /**

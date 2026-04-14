@@ -8,6 +8,8 @@ import { Tag, Tooltip, Typography } from '@arco-design/web-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import Operation from './components/Operation';
+import WebSearchToggle from './components/WebSearchToggle';
+import McpHomeBlock from './components/McpHomeBlock';
 import { Questions } from '@/config';
 import RtcClient from '@/lib/RtcClient';
 import { COMMAND, INTERRUPT_PRIORITY } from '@/utils/handler';
@@ -85,7 +87,13 @@ function Menu() {
         ''
       )}
       <AISettings />
-      {isJoined ? <Operation /> : ''}
+      {!isRealTimeCallMode() ? (
+        <>
+          <WebSearchToggle />
+          <McpHomeBlock />
+        </>
+      ) : null}
+      {isJoined ? <Operation /> : null}
     </div>
   );
 }

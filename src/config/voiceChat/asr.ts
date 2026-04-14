@@ -11,11 +11,11 @@ import { Provider } from '../basic';
  *       Some sensitive fields not provided in frontend were injected by the server (See: Server/sensitive.js).
  */
 export class ASRManager {
-  provider: Provider.Amazon | Provider.Google | Provider.Byteplus;
+  provider: Provider.Amazon | Provider.Byteplus | Provider.GoogleAsrV1 | Provider.GoogleAsrV2;
 
   #paramsMap: {
     [Provider.Amazon]: {
-      Provider: Provider.Amazon | Provider.Google;
+      Provider: Provider.Amazon;
       ProviderParams: {
         /**
          * @brief Create new access keys for an IAM user.
@@ -38,17 +38,6 @@ export class ASRManager {
          */
         Language: 'zh-CN' | 'en-US';
       };
-    };
-    [Provider.Google]: {
-      /**
-       * @refer https://cloud.google.com/speech-to-text/docs/speech-to-text-supported-languages?_gl=1*fvvdba*_up*MQ..&gclid=Cj0KCQiAoJC-BhCSARIsAPhdfShixYZAER8RJaVCJ161wYklfPL8dKNOw3Q_ODbdFw_gN1AEloZXus4aAlUWEALw_wcB&gclsrc=aw.ds
-       */
-      Language?: string;
-      /**
-       * @note Injected by server, refer to Server/sensitive.js.
-       * @refer https://cloud.google.com/docs/authentication/application-default-credentials#GAC
-       */
-      CredentialsJSON?: string;
     };
     [Provider.Byteplus]: {
       Provider: 'BytePlus';
@@ -86,6 +75,62 @@ export class ASRManager {
         StreamMode: number;
       };
     };
+    /**
+     * @brief Google Cloud Speech-to-Text API v1 (`ASRConfig.Provider` = `Google`).
+     * @note `CredentialsJSON` (if present) is injected by the server. See `Server/sensitive.js` → `VOICE_CHAT_MODE.ASRConfig.Google`.
+     * @refer https://cloud.google.com/speech-to-text/docs
+     */
+    [Provider.GoogleAsrV1]: {
+      Provider: 'Google';
+      ProviderParams: {
+        /**
+         * @brief Recognition locale (BCP-47), e.g. `yue-Hant-HK`.
+         * @refer https://cloud.google.com/speech-to-text/docs/speech-to-text-supported-languages
+         */
+        Language: string;
+        /**
+         * @brief Recognition model id (e.g. `latest_long`).
+         * @refer https://cloud.google.com/speech-to-text/docs/models/chirp
+         */
+        Model: string;
+        /**
+         * @brief Google service account JSON for authentication.
+         * @note Injected by server, refer to Server/sensitive.js.
+         * @refer https://cloud.google.com/docs/authentication/application-default-credentials#GAC
+         */
+        CredentialsJSON?: string;
+      };
+    };
+    /**
+     * @brief Google Cloud Speech-to-Text API v2 (`ASRConfig.Provider` = `GoogleV2`).
+     * @note `CredentialsJSON` / `RecognizerPath` (if present) are injected by the server. See `Server/sensitive.js` → `VOICE_CHAT_MODE.ASRConfig.GoogleV2`.
+     * @refer https://cloud.google.com/speech-to-text/v2/docs
+     */
+    [Provider.GoogleAsrV2]: {
+      Provider: 'GoogleV2';
+      ProviderParams: {
+        /**
+         * @brief BCP-47 language codes; v2 accepts one or more locales.
+         * @refer https://cloud.google.com/speech-to-text/v2/docs/speech-to-text-supported-languages
+         */
+        LanguageCodes: string[];
+        /**
+         * @brief Recognition model id (e.g. `latest_long`).
+         * @refer https://cloud.google.com/speech-to-text/v2/docs/chirp-model
+         */
+        Model: string;
+        /**
+         * @brief Fully qualified recognizer resource name (`projects/.../locations/.../recognizers/...`).
+         * @note Injected by server when required; refer to Server/sensitive.js.
+         */
+        RecognizerPath?: string;
+        /**
+         * @brief Google service account JSON for authentication.
+         * @note Injected by server, refer to Server/sensitive.js.
+         */
+        CredentialsJSON?: string;
+      };
+    };
   };
 
   constructor() {
@@ -98,15 +143,26 @@ export class ASRManager {
           Language: 'en-US',
         },
       },
-      [Provider.Google]: {
-        Language: 'en-US',
-      },
       [Provider.Byteplus]: {
         Provider: 'BytePlus',
         ProviderParams: {
           Mode: 'SeedASR',
           StreamMode: 0,
           Language: 'zh-CN',
+        },
+      },
+      [Provider.GoogleAsrV1]: {
+        Provider: 'Google',
+        ProviderParams: {
+          Language: 'en-US',
+          Model: 'latest_long',
+        },
+      },
+      [Provider.GoogleAsrV2]: {
+        Provider: 'GoogleV2',
+        ProviderParams: {
+          LanguageCodes: ['en-US'],
+          Model: 'latest_long',
         },
       },
     };

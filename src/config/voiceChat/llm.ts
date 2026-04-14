@@ -7,6 +7,18 @@ import { Provider } from '../basic';
 import ArkSVG from '@/assets/img/Ark.svg';
 import DeepSeekSVG from '@/assets/img/DeepSeek.svg';
 
+export { isLlmProviderAllowedForWebSearch, isLlmProviderAllowedForVoiceChatMcp } from '../basic';
+
+export type { LlmCustomMcpEntry, VoiceChatMcpItem } from './mcpManager';
+export {
+  buildVoiceChatMcpItems,
+  McpManager,
+  DEFAULT_LLM_MCP_COMFORT_WORDS,
+  VOICE_CHAT_MCP_SUPPORT_HINT,
+} from './mcpManager';
+
+export { WebSearchManager } from './webSearchManager';
+
 /**
  * @note Ark Model IDs, visit following url to find endpoint column, set model ID you want to use.
  *       *Demo default use 'Skylark-pro', you could modify it in LLMManager.endPointId.*
@@ -61,6 +73,7 @@ export const ModelMap = {
  * @brief Flexible Mode (VoiceChat Mode) Config.
  * @note For more information, you can refer to https://docs.byteplus.com/en/docs/byteplus-rtc/docs-1316243
  *       Some sensitive fields not provided in frontend were injected by the server (See: Server/sensitive.js).
+ *       Web Search / MCP are handled by {@link WebSearchManager} and {@link McpManager} on {@link VoiceChatManager}.
  */
 export class LLMManager {
   provider: Provider.Byteplus | Provider.OpenAI;

@@ -9,7 +9,7 @@
   height: calc(100% - 48px);
   display: flex;
   flex-direction: row;
-  align-items: center;
+  align-items: stretch;
   box-sizing: border-box;
 
   .mainArea {
@@ -32,5 +32,7 @@
     position: relative;
     width: 220px;
     height: 100%;
+    min-height: 0;
+    flex-shrink: 0;
   }
 }

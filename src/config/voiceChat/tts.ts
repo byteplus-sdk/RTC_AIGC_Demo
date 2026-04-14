@@ -71,13 +71,32 @@ export enum AMAZON_VOICE_TYPE {
   MATTHEW = 'Matthew',
 }
 
+/**
+ * @brief Google Cloud Text-to-Speech Chirp3 HD voices (`{locale}-Chirp3-HD-{Name}`), aligned with rtc-aigc-demo PRD.
+ * @refer https://cloud.google.com/text-to-speech/docs/chirp3-hd
+ */
+export enum GOOGLE_VOICE_TYPE {
+  Aoede = 'en-US-Chirp3-HD-Aoede',
+  Kore = 'en-US-Chirp3-HD-Kore',
+  Leda = 'en-US-Chirp3-HD-Leda',
+  Charon = 'en-US-Chirp3-HD-Charon',
+  Fenrir = 'en-US-Chirp3-HD-Fenrir',
+  Puck = 'en-US-Chirp3-HD-Puck',
+  Zephyr = 'en-US-Chirp3-HD-Zephyr',
+}
+
 export const VoiceMap = {
   [Provider.Byteplus]: BYTE_PLUS_VOICE_TYPE,
   [Provider.OpenAI]: OPENAI_VOICE_TYPE,
   [Provider.Amazon]: AMAZON_VOICE_TYPE,
+  [Provider.Google]: GOOGLE_VOICE_TYPE,
 };
 
-export type IVoiceType = BYTE_PLUS_VOICE_TYPE | OPENAI_VOICE_TYPE | AMAZON_VOICE_TYPE;
+export type IVoiceType =
+  | BYTE_PLUS_VOICE_TYPE
+  | OPENAI_VOICE_TYPE
+  | AMAZON_VOICE_TYPE
+  | GOOGLE_VOICE_TYPE;
 
 /**
  * @brief Flexible Mode (VoiceChat Mode) Config.
@@ -85,7 +104,8 @@ export type IVoiceType = BYTE_PLUS_VOICE_TYPE | OPENAI_VOICE_TYPE | AMAZON_VOICE
  *       Some sensitive fields not provided in frontend were injected by the server (See: Server/sensitive.js).
  */
 export class TTSManager {
-  provider: Provider.Byteplus | Provider.Amazon | Provider.OpenAI = Provider.Byteplus;
+  provider: Provider.Byteplus | Provider.Amazon | Provider.OpenAI | Provider.Google =
+    Provider.Byteplus;
 
   voiceType: IVoiceType = VoiceMap[Provider.Byteplus].Luna;
 
@@ -161,6 +181,21 @@ export class TTSManager {
         Speed?: string;
       };
     };
+    [Provider.Google]: {
+      /** @note rtc-aigc-demo / BytePlus Voice Chat expect PascalCase `Google`, not enum `google`. */
+      Provider: 'Google';
+      ProviderParams: {
+        VoiceSelection: {
+          LanguageCode: string;
+          Name: string;
+        };
+        StreamingAudioConfig: {
+          SampleRateHertz: number;
+          SpeakingRate: number;
+        };
+      };
+      IgnoreBracketText: number[];
+    };
   };
 
   constructor() {
@@ -194,6 +229,20 @@ export class TTSManager {
           Speed: '1.0',
         },
       },
+      [Provider.Google]: {
+        Provider: 'Google',
+        ProviderParams: {
+          VoiceSelection: {
+            LanguageCode: 'en-US',
+            Name: VoiceMap[Provider.Google].Aoede,
+          },
+          StreamingAudioConfig: {
+            SampleRateHertz: 24000,
+            SpeakingRate: 1.0,
+          },
+        },
+        IgnoreBracketText: [1, 2],
+      },
     };
   }
 
@@ -223,6 +272,16 @@ export class TTSManager {
           this.#paramsMap[this.provider].ProviderParams.VoiceID = this.voiceType;
         }
         break;
+      case Provider.Google: {
+        const g = this.#paramsMap[this.provider].ProviderParams;
+        const name = String(this.voiceType);
+        g.VoiceSelection.Name = name;
+        const chirp = '-Chirp3-HD-';
+        const i = name.indexOf(chirp);
+        g.VoiceSelection.LanguageCode =
+          i >= 0 ? name.slice(0, i) : g.VoiceSelection.LanguageCode || 'en-US';
+        break;
+      }
       default:
         break;
     }
