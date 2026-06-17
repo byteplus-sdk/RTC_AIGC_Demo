@@ -140,6 +140,11 @@ If you encounter issues beyond those listed above, please feel free to contact u
 - [Demo Experience](https://docs.byteplus.com/en/docs/byteplus-rtc/docs-1310559)
 - [Solution Integration](https://docs.byteplus.com/en/docs/byteplus-rtc/docs-1310560)
 
+## Security and privacy
+
+This project takes security seriously.
+For vulnerability reporting and supported versions, see [SECURITY.md](SECURITY.md)
+
 ## Changelog
 
 ### OpenAPI Updates
