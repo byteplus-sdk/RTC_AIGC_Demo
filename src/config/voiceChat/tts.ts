@@ -5,6 +5,7 @@
 
 import { Provider } from '../basic';
 import { createIsEnumType } from '@/utils/type';
+import type { SeedVersion } from './seedVersion';
 
 /**
  * @brief Byteplus Voice Type
@@ -45,6 +46,59 @@ export enum BYTE_PLUS_VOICE_TYPE {
   ひろし = 'multi_male_wanqudashu_moon_bigtts',
   Aria = 'zh_female_shuangkuaisisi_moon_bigtts',
 }
+
+/**
+ * @brief BytePlus Seed TTS 2.0 voice types (uranus_bigtts).
+ * @refer https://docs.byteplus.com/en/docs/byteplusvoice/voicelist
+ */
+export enum BYTE_PLUS_TTS_2_VOICE_TYPE {
+  Vivi = 'zh_female_vv_uranus_bigtts',
+  Mindy = 'zh_female_xiaohe_uranus_bigtts',
+  Stokie = 'en_female_stokie_uranus_bigtts',
+  Dacey = 'en_female_dacey_uranus_bigtts',
+  Tim = 'en_male_tim_uranus_bigtts',
+  Kian = 'zh_male_m191_uranus_bigtts',
+  Cedric = 'zh_male_taocheng_uranus_bigtts',
+  Sophie = 'zh_male_sophie_uranus_bigtts',
+  Jean = 'zh_female_yingyujiaoxue_uranus_bigtts',
+  Magnus = 'zh_male_dayi_uranus_bigtts',
+  Mabel = 'zh_female_mizai_uranus_bigtts',
+  Nadia = 'zh_female_jitangnv_uranus_bigtts',
+  Opal = 'zh_female_meilinvyou_uranus_bigtts',
+  Pearl = 'zh_female_liuchangnv_uranus_bigtts',
+  Quentin = 'zh_male_ruyayichen_uranus_bigtts',
+  Vienna = 'zh_female_vivo_uranus_bigtts',
+  Alina = 'zh_female_xiaoai_uranus_bigtts',
+  Corinne = 'zh_female_cancan_uranus_bigtts',
+  Esther = 'zh_female_tianmeixiaoyuan_uranus_bigtts',
+  Freya = 'zh_female_tianmeitaozi_uranus_bigtts',
+  Gigi = 'zh_female_shuangkuaisisi_uranus_bigtts',
+  Holly = 'zh_female_peiqi_uranus_bigtts',
+  Lyla = 'zh_female_xiaoxue_uranus_bigtts',
+  Daisy = 'zh_female_yuanqi_uranus_bigtts',
+  Tracy = 'zh_female_kefunvsheng_uranus_bigtts',
+  Jess = 'zh_male_shaonianzixin_uranus_bigtts',
+  Pinky = 'zh_female_linjianvhai_uranus_bigtts',
+  Sandy = 'zh_female_sajiaoxuemei_uranus_bigtts',
+  Bonnie = 'zh_female_dabing_uranus_bigtts',
+  Felix = 'zh_male_liufei_uranus_bigtts',
+  Celeste = 'zh_female_qingxinnvsheng_uranus_bigtts',
+  'Monkey King' = 'zh_male_sunwukong_uranus_bigtts',
+  Minimi = 'jp_female_minimi_uranus_bigtts',
+  Sweety = 'zh_female_kiwi_uranus_bigtts',
+  '지훈' = 'kr_male_shane_uranus_bigtts',
+  Han = 'id_male_han_uranus_bigtts',
+  Felipe = 'es_male_felipe_uranus_bigtts',
+  Martins = 'pt_male_martins_uranus_bigtts',
+  Usseau = 'fr_male_usseau_uranus_bigtts',
+  Sven = 'de_male_seven_uranus_bigtts',
+  Enzo = 'it_male_enzo_uranus_bigtts',
+}
+
+export const isByteplusTts2Voice = (voiceType: string) => voiceType.endsWith('_uranus_bigtts');
+
+export const getSeedTtsVersionFromVoice = (voiceType: IVoiceType): SeedVersion =>
+  typeof voiceType === 'string' && isByteplusTts2Voice(voiceType) ? '2.0' : '1.0';
 
 /**
  * @brief OpenAI Voice Type
@@ -94,6 +148,7 @@ export const VoiceMap = {
 
 export type IVoiceType =
   | BYTE_PLUS_VOICE_TYPE
+  | BYTE_PLUS_TTS_2_VOICE_TYPE
   | OPENAI_VOICE_TYPE
   | AMAZON_VOICE_TYPE
   | GOOGLE_VOICE_TYPE;
@@ -107,7 +162,10 @@ export class TTSManager {
   provider: Provider.Byteplus | Provider.Amazon | Provider.OpenAI | Provider.Google =
     Provider.Byteplus;
 
-  voiceType: IVoiceType = VoiceMap[Provider.Byteplus].Luna;
+  /** Seed TTS 1.0 vs 2.0 (default 2.0). */
+  seedTtsVersion: SeedVersion = '2.0';
+
+  voiceType: IVoiceType = BYTE_PLUS_TTS_2_VOICE_TYPE.Pearl;
 
   #paramsMap: {
     [Provider.Byteplus]: {
@@ -127,9 +185,9 @@ export class TTSManager {
           /**
            * @refer https://console.byteplus.com/voice/service/1000014
            */
-          voice_type: BYTE_PLUS_VOICE_TYPE;
+          voice_type: BYTE_PLUS_VOICE_TYPE | BYTE_PLUS_TTS_2_VOICE_TYPE;
         };
-        resourceId: 'volc.service_type.1000009';
+        resourceId: 'volc.service_type.1000009' | 'seed-tts-2.0';
       };
     };
     [Provider.Amazon]: {
@@ -205,9 +263,9 @@ export class TTSManager {
         ProviderParams: {
           app: {},
           audio: {
-            voice_type: VoiceMap[Provider.Byteplus].Luna,
+            voice_type: BYTE_PLUS_TTS_2_VOICE_TYPE.Pearl,
           },
-          resourceId: 'volc.service_type.1000009',
+          resourceId: 'seed-tts-2.0',
         },
       },
       [Provider.Amazon]: {
@@ -248,14 +306,22 @@ export class TTSManager {
 
   get value() {
     switch (this.provider) {
-      case Provider.Byteplus:
-        if (
-          this.#paramsMap[this.provider].ProviderParams.audio &&
-          createIsEnumType(BYTE_PLUS_VOICE_TYPE)(this.voiceType)
-        ) {
-          this.#paramsMap[this.provider].ProviderParams.audio.voice_type = this.voiceType;
+      case Provider.Byteplus: {
+        const bp = this.#paramsMap[this.provider].ProviderParams;
+        bp.resourceId =
+          this.seedTtsVersion === '2.0' ? 'seed-tts-2.0' : 'volc.service_type.1000009';
+        if (bp.audio) {
+          const isTts1 =
+            createIsEnumType(BYTE_PLUS_VOICE_TYPE)(this.voiceType) && this.seedTtsVersion === '1.0';
+          const isTts2 =
+            createIsEnumType(BYTE_PLUS_TTS_2_VOICE_TYPE)(this.voiceType) &&
+            this.seedTtsVersion === '2.0';
+          if (isTts1 || isTts2) {
+            bp.audio.voice_type = this.voiceType as BYTE_PLUS_VOICE_TYPE;
+          }
         }
         break;
+      }
       case Provider.OpenAI:
         if (
           this.#paramsMap[this.provider].ProviderParams &&

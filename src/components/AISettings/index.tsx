@@ -8,7 +8,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import isEqual from 'lodash/isEqual';
 import { IconSwap } from '@arco-design/web-react/icon';
-import aigcConfig, { ArkVoiceDescription, VendorSVG } from '@/config';
+import aigcConfig, { ArkVoiceDescription, ArkTts2VoiceDescription, VendorSVG } from '@/config';
 import { ASR_PROVIDER_OPTIONS, Provider } from '@/config/basic';
 import RtcClient from '@/lib/RtcClient';
 import { clearHistoryMsg, updateAIConfig } from '@/store/slices/room';
@@ -22,11 +22,24 @@ import { isRealTimeCallMode } from '@/app/base';
 import {
   AMAZON_VOICE_TYPE,
   BYTE_PLUS_VOICE_TYPE,
+  BYTE_PLUS_TTS_2_VOICE_TYPE,
   GOOGLE_VOICE_TYPE,
   OPENAI_VOICE_TYPE,
+  getSeedTtsVersionFromVoice,
 } from '@/config/voiceChat/tts';
+import {
+  BYTEPLUS_ASR_LABEL,
+  BYTEPLUS_ASR_V1,
+  BYTEPLUS_ASR_V2,
+  BYTEPLUS_TTS_V1,
+  BYTEPLUS_TTS_V2,
+  byteplusAsrKeyFromVersion,
+  byteplusTtsKeyFromVersion,
+  seedAsrVersionFromKey,
+  seedTtsVersionFromKey,
+} from '@/config/voiceChat/seedVersion';
 import { ModelMap, isLlmProviderAllowedForWebSearch } from '@/config/voiceChat/llm';
-import { AvatarMap } from '@/config/voiceChat/avatar';
+import { AvatarMap, RealtimeAvatarMap } from '@/config/voiceChat/avatar';
 import styles from './index.module.less';
 
 const formatOptions = (options: Provider[], provider?: Provider) =>
@@ -44,13 +57,22 @@ function getAsrVendorLabel(provider: Provider): string {
   return row?.label ?? utils.capitalizeFirstLetter(provider);
 }
 
-/** ASR Provider Selector Options */
-const ASR_PROVIDER_SELECTOR_OPTIONS = ASR_PROVIDER_OPTIONS.map(({ value, label }) => ({
-  key: value,
-  label,
-  value,
-  icon: VendorSVG[value],
-}));
+/** ASR Provider Selector Options — expanded with Seed ASR 1.0/2.0 virtual keys at render time. */
+const expandByteplusAsrProviders = (providers: Provider[]): Provider[] => {
+  const idx = providers.indexOf(Provider.Byteplus);
+  if (idx !== -1) {
+    providers.splice(idx, 1, BYTEPLUS_ASR_V2, BYTEPLUS_ASR_V1);
+  }
+  return providers;
+};
+
+const formatAsrOptions = (options: Provider[]) =>
+  options.map((key) => ({
+    key,
+    label: BYTEPLUS_ASR_LABEL[key] || getAsrVendorLabel(key as Provider),
+    value: key,
+    icon: VendorSVG[key === BYTEPLUS_ASR_V1 || key === BYTEPLUS_ASR_V2 ? Provider.Byteplus : key],
+  }));
 
 const formatVoiceTypeOptions = (options: {
   [key in Provider]?: { [key: string]: any };
@@ -66,7 +88,10 @@ const formatVoiceTypeOptions = (options: {
           label: utils.capitalizeFirstLetter(option),
           value: voices![option],
           icon: VendorSVG[provider || option],
-          description: ArkVoiceDescription[voices![option] as BYTE_PLUS_VOICE_TYPE] || '',
+          description:
+            ArkVoiceDescription[voices![option] as BYTE_PLUS_VOICE_TYPE] ||
+            ArkTts2VoiceDescription[voices![option] as BYTE_PLUS_TTS_2_VOICE_TYPE] ||
+            '',
         })),
       };
     },
@@ -133,6 +158,8 @@ function AISettings() {
     endPointId: aigcConfig.endPointId,
     WelcomeMessage: aigcConfig.WelcomeMessage,
     SystemMessages: aigcConfig.SystemMessages,
+    SeedAsrVersion: aigcConfig.SeedAsrVersion,
+    SeedTtsVersion: aigcConfig.SeedTtsVersion,
   });
 
   const [loading, setLoading] = useState(false);
@@ -142,6 +169,7 @@ function AISettings() {
     const allVoices = {
       ...OPENAI_VOICE_TYPE,
       ...BYTE_PLUS_VOICE_TYPE,
+      ...BYTE_PLUS_TTS_2_VOICE_TYPE,
       ...AMAZON_VOICE_TYPE,
       ...GOOGLE_VOICE_TYPE,
     };
@@ -167,7 +195,13 @@ function AISettings() {
             (key) =>
               allModels[key as keyof typeof allModels].endPointId === room.aiConfig.endPointId
           )}`,
-          `ASR ${getAsrVendorLabel(room.aiConfig['Provider.ASR'])}`,
+          `ASR ${
+            room.aiConfig['Provider.ASR'] === Provider.Byteplus
+              ? room.aiConfig.SeedAsrVersion === '2.0'
+                ? 'Seed ASR 2.0'
+                : 'Seed ASR 1.0'
+              : getAsrVendorLabel(room.aiConfig['Provider.ASR'])
+          }`,
           room.aiConfig['Provider.Avatar'] !== Provider.None
             ? `Avatar ${`${utils.capitalizeFirstLetter(room.aiConfig.avatar).substring(0, 12)}...`}`
             : void 0,
@@ -176,6 +210,7 @@ function AISettings() {
     room.aiConfig.voice,
     room.aiConfig.endPointId,
     room.aiConfig['Provider.ASR'],
+    room.aiConfig.SeedAsrVersion,
     room.aiConfig['Provider.Avatar'],
     room.aiConfig.avatar,
   ]);
@@ -294,7 +329,8 @@ function AISettings() {
                       [Provider.OpenAI]: OPENAI_VOICE_TYPE,
                     }
                   : {
-                      [Provider.Byteplus]: BYTE_PLUS_VOICE_TYPE,
+                      [BYTEPLUS_TTS_V2]: BYTE_PLUS_TTS_2_VOICE_TYPE,
+                      [BYTEPLUS_TTS_V1]: BYTE_PLUS_VOICE_TYPE,
                       [Provider.OpenAI]: OPENAI_VOICE_TYPE,
                       [Provider.Amazon]: AMAZON_VOICE_TYPE,
                       [Provider.Google]: GOOGLE_VOICE_TYPE,
@@ -304,9 +340,38 @@ function AISettings() {
                 icon: <IconSwap style={{ fontSize: '12px' }} />,
                 text: 'Switch',
               }}
-              checked={data['Provider.TTS']}
-              onChange={propsChangedHandler('voice')}
-              onChecked={propsChangedHandler('Provider.TTS')}
+              checked={
+                data['Provider.TTS'] === Provider.Byteplus
+                  ? byteplusTtsKeyFromVersion(data.SeedTtsVersion || '2.0')
+                  : data['Provider.TTS']
+              }
+              onChange={(voice) => {
+                propsChangedHandler('voice')(voice);
+                const isBpVoice =
+                  Object.values(BYTE_PLUS_VOICE_TYPE).includes(voice as BYTE_PLUS_VOICE_TYPE) ||
+                  Object.values(BYTE_PLUS_TTS_2_VOICE_TYPE).includes(
+                    voice as BYTE_PLUS_TTS_2_VOICE_TYPE
+                  );
+                if (isBpVoice) {
+                  setData((prev) => ({
+                    ...prev,
+                    voice: voice as ConfigFactory['voice'],
+                    'Provider.TTS': Provider.Byteplus,
+                    SeedTtsVersion: getSeedTtsVersionFromVoice(voice as ConfigFactory['voice']),
+                  }));
+                }
+              }}
+              onChecked={(v) => {
+                if (v === BYTEPLUS_TTS_V1 || v === BYTEPLUS_TTS_V2) {
+                  setData((prev) => ({
+                    ...prev,
+                    'Provider.TTS': Provider.Byteplus,
+                    SeedTtsVersion: seedTtsVersionFromKey(v),
+                  }));
+                  return;
+                }
+                propsChangedHandler('Provider.TTS')(v);
+              }}
               value={data.voice}
               placeHolder="Please select the voice you need"
             />
@@ -332,9 +397,25 @@ function AISettings() {
             <TitleCard title="ASR">
               <CheckBoxSelector
                 label="ASR Vendor"
-                data={ASR_PROVIDER_SELECTOR_OPTIONS}
-                onChange={propsChangedHandler('Provider.ASR')}
-                value={data['Provider.ASR']}
+                data={formatAsrOptions(
+                  expandByteplusAsrProviders(ASR_PROVIDER_OPTIONS.map((o) => o.value))
+                )}
+                onChange={(v) => {
+                  if (v === BYTEPLUS_ASR_V1 || v === BYTEPLUS_ASR_V2) {
+                    setData((p) => ({
+                      ...p,
+                      'Provider.ASR': Provider.Byteplus,
+                      SeedAsrVersion: seedAsrVersionFromKey(v),
+                    }));
+                  } else {
+                    propsChangedHandler('Provider.ASR')(v);
+                  }
+                }}
+                value={
+                  data['Provider.ASR'] === Provider.Byteplus
+                    ? byteplusAsrKeyFromVersion(data.SeedAsrVersion || '2.0')
+                    : data['Provider.ASR']
+                }
                 moreProps={{
                   icon: <IconSwap style={{ fontSize: '12px' }} />,
                   text: 'Switch',
@@ -346,7 +427,7 @@ function AISettings() {
           <TitleCard title="Avatar Role">
             <CheckBoxSelector
               label="Avatar Role"
-              data={formatAvatarTypeOptions(AvatarMap)}
+              data={formatAvatarTypeOptions(isRealTimeCallMode() ? RealtimeAvatarMap : AvatarMap)}
               onChange={propsChangedHandler('avatar')}
               onChecked={propsChangedHandler('Provider.Avatar')}
               checked={data['Provider.Avatar']}

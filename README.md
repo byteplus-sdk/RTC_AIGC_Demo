@@ -1,4 +1,4 @@
-# Interactive AIGC scenario RTC Demo
+# Conversational AI Demo
 
 Demo Online: https://demo.byteplus.com/rtc/solution/aigc
 
@@ -153,6 +153,8 @@ Refer to [OpenAPI Updates](https://docs.byteplus.com/en/docs/byteplus-rtc/docs-1
 ### Release Notes
 
 #### [1.4.0]
+- 2026-07-29
+    - Support Akool digital human
 - 2026-01-27
     - Upgrade API endpoints and region
 - 2025-11-06

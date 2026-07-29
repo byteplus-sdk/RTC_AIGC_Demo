@@ -6,7 +6,13 @@
 import { ConfigFactory } from './config';
 import { CALL_TYPE } from '@/app/base';
 import { Provider } from './basic';
-import { BYTE_PLUS_VOICE_TYPE } from './voiceChat/tts';
+import { BYTE_PLUS_VOICE_TYPE, BYTE_PLUS_TTS_2_VOICE_TYPE } from './voiceChat/tts';
+import {
+  BYTEPLUS_ASR_V1,
+  BYTEPLUS_ASR_V2,
+  BYTEPLUS_TTS_V1,
+  BYTEPLUS_TTS_V2,
+} from './voiceChat/seedVersion';
 import OpenAiSVG from '@/assets/img/OpenAI.svg';
 import GoogleSVG from '@/assets/img/Google.svg';
 import AmazonSVG from '@/assets/img/Amazon.svg';
@@ -24,6 +30,11 @@ export const VendorSVG = {
   [Provider.GoogleAsrV2]: GoogleSVG,
   [Provider.OpenAI]: OpenAiSVG,
   [Provider.Byteplus]: ArkSVG,
+  [Provider.Akool]: ArkSVG,
+  [BYTEPLUS_ASR_V1]: ArkSVG,
+  [BYTEPLUS_ASR_V2]: ArkSVG,
+  [BYTEPLUS_TTS_V1]: ArkSVG,
+  [BYTEPLUS_TTS_V2]: ArkSVG,
   /** Custom LLM mode uses OpenAI-compatible stack; reuse icon for UI selectors. */
   [Provider.CustomLLM]: OpenAiSVG,
 };
@@ -62,6 +73,18 @@ export const ArkVoiceDescription: Partial<Record<BYTE_PLUS_VOICE_TYPE, string>> 
   [BYTE_PLUS_VOICE_TYPE.あけみ]: 'Japanese, General Scene',
   [BYTE_PLUS_VOICE_TYPE.ひろし]: 'Japanese & Spanish, General Scene',
   [BYTE_PLUS_VOICE_TYPE.Aria]: 'English & Chinese, General Scene',
+};
+
+export const ArkTts2VoiceDescription: Partial<Record<BYTE_PLUS_TTS_2_VOICE_TYPE, string>> = {
+  [BYTE_PLUS_TTS_2_VOICE_TYPE.Pearl]: 'English & Chinese, Clear',
+  [BYTE_PLUS_TTS_2_VOICE_TYPE.Sophie]: 'English & Chinese, Clear',
+  [BYTE_PLUS_TTS_2_VOICE_TYPE.Vivi]: 'English & Chinese, General Scene',
+  [BYTE_PLUS_TTS_2_VOICE_TYPE.Mindy]: 'English & Chinese, General Scene',
+  [BYTE_PLUS_TTS_2_VOICE_TYPE.Stokie]: 'English, General Scene',
+  [BYTE_PLUS_TTS_2_VOICE_TYPE.Mabel]: 'English & Chinese, Sweet',
+  [BYTE_PLUS_TTS_2_VOICE_TYPE.Nadia]: 'English & Chinese, Warm',
+  [BYTE_PLUS_TTS_2_VOICE_TYPE.Opal]: 'English & Chinese, Charming',
+  [BYTE_PLUS_TTS_2_VOICE_TYPE.Quentin]: 'English & Chinese, Warm',
 };
 
 export enum CustomParamsType {

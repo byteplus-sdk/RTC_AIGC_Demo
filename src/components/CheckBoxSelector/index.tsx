@@ -7,7 +7,13 @@ import React, { useEffect, useMemo, useState, memo, useCallback } from 'react';
 import { Button, Drawer, Radio } from '@arco-design/web-react';
 import CheckBox from '@/components/CheckBox';
 import utils from '@/utils/utils';
+import { BYTEPLUS_ASR_LABEL, BYTEPLUS_TTS_LABEL } from '@/config/voiceChat/seedVersion';
 import styles from './index.module.less';
+
+const TAB_LABEL: Record<string, string> = {
+  ...BYTEPLUS_ASR_LABEL,
+  ...BYTEPLUS_TTS_LABEL,
+};
 
 const RadioGroup = Radio.Group;
 
@@ -89,7 +95,7 @@ function CheckBoxSelector(props: IProps) {
         <div className={styles['ratio-wrapper']}>
           <RadioGroup
             options={Object.keys(data).map((key) => ({
-              label: utils.capitalizeFirstLetter(key),
+              label: TAB_LABEL[key] || utils.capitalizeFirstLetter(key),
               value: key,
             }))}
             type="button"

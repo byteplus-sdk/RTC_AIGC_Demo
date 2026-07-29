@@ -30,10 +30,12 @@ function Conversation(props: React.HTMLAttributes<HTMLDivElement>) {
   );
   const containerRef = useRef<HTMLDivElement>(null);
   const lastMsg = msgHistory?.[msgHistory.length - 1];
-  // Only realtime & byteplus tts are supported.
-  const isSupportedSubtitle =
-    isRealTimeCallMode() || (!isRealTimeCallMode() && Config['Provider.TTS'] === Provider.Byteplus);
   const isAvatarScene = Config.AvatarEnable;
+  // Only realtime & byteplus tts are supported; hide subtitles when avatar is enabled.
+  const isSupportedSubtitle =
+    !isAvatarScene &&
+    (isRealTimeCallMode() ||
+      (!isRealTimeCallMode() && Config['Provider.TTS'] === Provider.Byteplus));
 
   useEffect(() => {
     const container = containerRef.current;

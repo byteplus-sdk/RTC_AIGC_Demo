@@ -13,6 +13,10 @@ export enum BYTE_PLUS_AVATAR_TYPE {
   Linyunzhi = '250623-zhibo-linyunzhi',
 }
 
+export enum AKOOL_AVATAR_TYPE {
+  Tristan = 'dvp_Tristan_cloth2_1080P',
+}
+
 const BYTEPLUS_AVATAR = {
   [BYTE_PLUS_AVATAR_TYPE.Linyunzhi]: {
     avatarRole: '250623-zhibo-linyunzhi',
@@ -21,12 +25,27 @@ const BYTEPLUS_AVATAR = {
   },
 };
 
+const AKOOL_AVATAR = {
+  [AKOOL_AVATAR_TYPE.Tristan]: {
+    avatarRole: AKOOL_AVATAR_TYPE.Tristan,
+    description: 'Akool Avatar',
+    icon: ArkSVG,
+  },
+};
+
 export const AvatarMap = {
+  [Provider.None]: {},
+  [Provider.Byteplus]: BYTEPLUS_AVATAR,
+  [Provider.Akool]: AKOOL_AVATAR,
+};
+
+/** Realtime mode: BytePlus avatar only (Akool not supported). */
+export const RealtimeAvatarMap = {
   [Provider.None]: {},
   [Provider.Byteplus]: BYTEPLUS_AVATAR,
 };
 
-export type IAvatarType = BYTE_PLUS_AVATAR_TYPE | (string & {});
+export type IAvatarType = BYTE_PLUS_AVATAR_TYPE | AKOOL_AVATAR_TYPE | (string & {});
 
 /**
  * @brief Flexible Mode (VoiceChat Mode) Config.
@@ -34,7 +53,7 @@ export type IAvatarType = BYTE_PLUS_AVATAR_TYPE | (string & {});
  *       Some sensitive fields not provided in frontend were injected by the server (See: Server/sensitive.js).
  */
 export class AvatarManager {
-  provider: Provider.None | Provider.Byteplus = Provider.None;
+  provider: Provider.None | Provider.Byteplus | Provider.Akool = Provider.None;
 
   avatarRoleId: IAvatarType =
     AvatarMap[Provider.Byteplus][BYTE_PLUS_AVATAR_TYPE.Linyunzhi].avatarRole;
@@ -61,6 +80,21 @@ export class AvatarManager {
       BackgroundUrl: string;
       VideoBitrate: number;
     };
+    [Provider.Akool]: {
+      Enabled: boolean;
+      Provider: 'Akool';
+      /**
+       * @note Injected by server, refer to Server/sensitive.js.
+       */
+      AvatarUserID: string;
+      ProviderParams: {
+        /**
+         * @note Injected by server, refer to Server/sensitive.js.
+         */
+        ApiKey: string;
+        AvatarId: string;
+      };
+    };
   };
 
   constructor() {
@@ -77,6 +111,15 @@ export class AvatarManager {
         BackgroundUrl: '',
         VideoBitrate: 4000,
       },
+      [Provider.Akool]: {
+        Enabled: true,
+        Provider: 'Akool',
+        AvatarUserID: '',
+        ProviderParams: {
+          ApiKey: '',
+          AvatarId: AKOOL_AVATAR_TYPE.Tristan,
+        },
+      },
     };
   }
 
@@ -85,11 +128,14 @@ export class AvatarManager {
       case Provider.Byteplus:
         this.#paramsMap[this.provider].BackgroundUrl = this.backgroundUrl;
         this.#paramsMap[this.provider].AvatarRole = this.avatarRoleId;
-        break;
+        return this.#paramsMap[this.provider];
+      case Provider.Akool:
+        this.#paramsMap[this.provider].AvatarUserID = String(this.avatarRoleId);
+        this.#paramsMap[this.provider].ProviderParams.AvatarId = this.avatarRoleId;
+        return this.#paramsMap[this.provider];
       case Provider.None:
       default:
-        break;
+        return this.#paramsMap[Provider.None] || {};
     }
-    return this.#paramsMap[this.provider] || {};
   }
 }

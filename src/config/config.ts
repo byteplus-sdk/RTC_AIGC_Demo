@@ -10,6 +10,8 @@ import { VoiceChatManager } from './voiceChat';
 import { isLlmProviderAllowedForWebSearch, ModuleType, Provider } from './basic';
 
 import type { IVoiceType } from './voiceChat/tts';
+import { getSeedTtsVersionFromVoice } from './voiceChat/tts';
+import type { SeedVersion } from './voiceChat/seedVersion';
 import type { LlmCustomMcpEntry } from './voiceChat/mcpManager';
 
 export class ConfigFactory {
@@ -95,6 +97,9 @@ export class ConfigFactory {
 
   set 'Provider.Avatar'(value: Provider) {
     if (this.#manager instanceof RealTimeConfig) {
+      if (value === Provider.Akool) {
+        return;
+      }
       this.#realTimeManager.setProvider(ModuleType.Avatar, value);
       return;
     }
@@ -109,6 +114,9 @@ export class ConfigFactory {
 
   set voice(value: IVoiceType) {
     this.#manager.voice = value;
+    if (!isRealTimeCallMode() && this.#voiceChatManager.tts.provider === Provider.Byteplus) {
+      this.#voiceChatManager.tts.seedTtsVersion = getSeedTtsVersionFromVoice(value);
+    }
   }
 
   get voice() {
@@ -149,9 +157,34 @@ export class ConfigFactory {
   }
 
   get BackgroundUrl() {
+    if (!isRealTimeCallMode() && this.#voiceChatManager.avatar.provider === Provider.Akool) {
+      return '';
+    }
     return isRealTimeCallMode()
       ? this.#realTimeManager.avatar.backgroundUrl
       : this.#voiceChatManager.avatar.backgroundUrl;
+  }
+
+  set SeedAsrVersion(value: SeedVersion) {
+    if (isRealTimeCallMode()) {
+      return;
+    }
+    this.#voiceChatManager.asr.seedAsrVersion = value;
+  }
+
+  get SeedAsrVersion(): SeedVersion {
+    return isRealTimeCallMode() ? '2.0' : this.#voiceChatManager.asr.seedAsrVersion;
+  }
+
+  set SeedTtsVersion(value: SeedVersion) {
+    if (isRealTimeCallMode()) {
+      return;
+    }
+    this.#voiceChatManager.tts.seedTtsVersion = value;
+  }
+
+  get SeedTtsVersion(): SeedVersion {
+    return isRealTimeCallMode() ? '2.0' : this.#voiceChatManager.tts.seedTtsVersion;
   }
 
   set LLMWebSearchEnabled(value: boolean) {

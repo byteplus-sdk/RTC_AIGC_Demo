@@ -4,6 +4,7 @@
  */
 
 import { Provider } from '../basic';
+import type { SeedVersion } from './seedVersion';
 
 /**
  * @brief Flexible Mode (VoiceChat Mode) Config.
@@ -12,6 +13,9 @@ import { Provider } from '../basic';
  */
 export class ASRManager {
   provider: Provider.Amazon | Provider.Byteplus | Provider.GoogleAsrV1 | Provider.GoogleAsrV2;
+
+  /** Seed ASR 1.0 vs 2.0 (default 2.0). */
+  seedAsrVersion: SeedVersion = '2.0';
 
   #paramsMap: {
     [Provider.Amazon]: {
@@ -70,9 +74,14 @@ export class ASRManager {
         ApiResourceId?: string;
         /**
          * @brief The output mode for ASR results:
+         * @note ASR 1.0: 0 (streaming). ASR 2.0: only 1 or 2 (doc recommends 2).
          * @refer https://docs.byteplus.com/en/docs/byteplus-rtc/docs-1558163#byteplusasr
          */
         StreamMode: number;
+        /**
+         * @brief Secondary recognition on full sentences when StreamMode is 2 (ASR 2.0).
+         */
+        enable_nonstream?: boolean;
       };
     };
     /**
@@ -169,6 +178,24 @@ export class ASRManager {
   }
 
   get value() {
-    return this.#paramsMap[this.provider] || {};
+    switch (this.provider) {
+      case Provider.Byteplus: {
+        const bp = this.#paramsMap[this.provider].ProviderParams;
+        bp.ApiResourceId =
+          this.seedAsrVersion === '2.0'
+            ? 'volc.seedasr.sauc.duration'
+            : 'volc.bigasr.sauc.duration';
+        if (this.seedAsrVersion === '2.0') {
+          bp.StreamMode = 2;
+          bp.enable_nonstream = true;
+        } else {
+          bp.StreamMode = 0;
+          delete bp.enable_nonstream;
+        }
+        return this.#paramsMap[this.provider];
+      }
+      default:
+        return this.#paramsMap[this.provider] || {};
+    }
   }
 }

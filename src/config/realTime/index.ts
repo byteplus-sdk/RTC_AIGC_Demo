@@ -11,7 +11,7 @@ import { ModuleType, Provider } from '../basic';
 /**
  * @brief RealTime Mode Config.
  * @note For more information, you can refer to https://docs.byteplus.com/en/docs/byteplus-rtc/docs-1316255
- *       Digital human (`AvatarConfig`) is optional on `StartVoiceChatWithRealtimeAPI`, same as rtc-aigc-demo.
+ *       Digital human (`AvatarConfig`) is optional on `StartVoiceChatWithRealtimeAPI` (BytePlus only; Akool not supported).
  */
 export class RealTimeConfig {
   llm: LLMManager;
@@ -25,7 +25,10 @@ export class RealTimeConfig {
 
   setProvider(module: ModuleType, provider: Provider) {
     if (module === ModuleType.Avatar) {
-      this.avatar.provider = provider as AvatarManager['provider'];
+      if (provider === Provider.Akool) {
+        return;
+      }
+      this.avatar.provider = provider as Exclude<AvatarManager['provider'], Provider.Akool>;
     }
   }
 

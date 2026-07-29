@@ -4,6 +4,36 @@
  */
 const merge = require('lodash/merge');
 
+const AVATAR_PROVIDER = {
+  VOLCANO: 'Volcano',
+  AKOOL: 'Akool',
+};
+
+/** AvatarConfig: inject secrets by Provider (Volcano / legacy flat / Akool). */
+function mergeAvatarSensitiveByProvider(client, sensitiveByProvider) {
+  const mergedAv = merge({}, client || {});
+  const raw = mergedAv.Provider;
+  const providerKey = typeof raw === 'string' && raw !== '' ? raw : AVATAR_PROVIDER.VOLCANO;
+  const secrets = sensitiveByProvider[providerKey];
+  if (secrets && typeof secrets === 'object') {
+    if (providerKey === AVATAR_PROVIDER.VOLCANO) {
+      if (secrets.AvatarAppID != null) mergedAv.AvatarAppID = secrets.AvatarAppID;
+      if (secrets.AvatarToken != null) mergedAv.AvatarToken = secrets.AvatarToken;
+      if (mergedAv.ProviderParams) {
+        mergedAv.ProviderParams = merge({}, mergedAv.ProviderParams, {
+          ...(secrets.AvatarAppID != null ? { AvatarAppID: secrets.AvatarAppID } : {}),
+          ...(secrets.AvatarToken != null ? { AvatarToken: secrets.AvatarToken } : {}),
+        });
+      }
+    } else if (providerKey === AVATAR_PROVIDER.AKOOL) {
+      const patch = {};
+      if (secrets.ApiKey != null) patch.ApiKey = secrets.ApiKey;
+      mergedAv.ProviderParams = merge({}, mergedAv.ProviderParams || {}, patch);
+    }
+  }
+  return mergedAv;
+}
+
 /**
  * @note Not required, if you invoke getSessionToken to generate sessionToken, you should fill it.
  * @refer https://console.byteplus.com/user/basics/
@@ -86,11 +116,8 @@ const VOICE_CHAT_MODE = {
          */
         AccessToken: 'Your AccessToken',
         /**
-         * @brief The service plan type for the BytePlus ASR Model.
-         * @note Fixed to volc.bigasr.sauc.duration
-         * @refer https://docs.byteplus.com/en/docs/byteplus-rtc/docs-1558163#byteplusasr
+         * @note ApiResourceId is set by the frontend (Seed ASR 1.0 / 2.0).
          */
-        ApiResourceId: 'volc.bigasr.sauc.duration',
       },
     },
   },
@@ -159,8 +186,13 @@ const VOICE_CHAT_MODE = {
     },
   },
   AvatarConfig: {
-    AvatarAppID: 'Your Avatar App ID',
-    AvatarToken: 'Your Avatar Token',
+    [AVATAR_PROVIDER.VOLCANO]: {
+      AvatarAppID: 'Your Avatar App ID',
+      AvatarToken: 'Your Avatar Token',
+    },
+    [AVATAR_PROVIDER.AKOOL]: {
+      ApiKey: 'Your Akool API Key',
+    },
   },
   // SubtitleConfig: {
   //   /**
@@ -184,8 +216,10 @@ const REALTIME_API_MODE = {
     Token: 'Your OpenAI Token',
   },
   AvatarConfig: {
-    AvatarAppID: 'Your Realtime Avatar App ID',
-    AvatarToken: 'Your Realtime Avatar Token',
+    [AVATAR_PROVIDER.VOLCANO]: {
+      AvatarAppID: 'Your Realtime Avatar App ID',
+      AvatarToken: 'Your Realtime Avatar Token',
+    },
   },
 };
 
@@ -216,7 +250,10 @@ const injectSensitiveInfo = (body, isVoiceChatMode) => {
       );
     }
     if (body?.Config?.AvatarConfig) {
-      body.Config.AvatarConfig = merge(body.Config?.AvatarConfig, VOICE_CHAT_MODE.AvatarConfig);
+      body.Config.AvatarConfig = mergeAvatarSensitiveByProvider(
+        body.Config.AvatarConfig,
+        VOICE_CHAT_MODE.AvatarConfig
+      );
     }
     if (body?.Config?.SubtitleConfig) {
       body.Config.SubtitleConfig = merge(
@@ -234,7 +271,10 @@ const injectSensitiveInfo = (body, isVoiceChatMode) => {
     /** Inject realtime mode sensitive info */
     body.LLMConfig && (body.LLMConfig = merge(body.LLMConfig, REALTIME_API_MODE.LLMConfig));
     if (body?.AvatarConfig) {
-      body.AvatarConfig = merge(body.AvatarConfig, REALTIME_API_MODE.AvatarConfig);
+      body.AvatarConfig = mergeAvatarSensitiveByProvider(
+        body.AvatarConfig,
+        REALTIME_API_MODE.AvatarConfig
+      );
     }
   }
 };

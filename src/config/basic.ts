@@ -21,6 +21,8 @@ export enum Provider {
   GoogleAsrV2 = 'GoogleV2',
   Byteplus = 'BytePlusArk',
   CustomLLM = 'CustomLLM',
+  /** Akool digital human avatar provider. */
+  Akool = 'Akool',
 }
 
 export enum ModuleType {

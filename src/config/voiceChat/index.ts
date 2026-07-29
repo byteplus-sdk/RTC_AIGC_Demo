@@ -73,14 +73,21 @@ export class VoiceChatManager {
     const llmConfig = this.llm.value;
     this.mcp.applyToLlmRow(this.llm.provider, llmConfig);
     const webSearch = this.webSearch.getPayload(this.llm.provider);
+    const ttsConfig = this.tts.value;
     return {
       Config: {
         LLMConfig: llmConfig,
         ASRConfig: this.asr.value,
-        TTSConfig: this.tts.value,
+        TTSConfig: ttsConfig,
         AvatarConfig: this.avatar.value,
         SubtitleConfig: {
-          SubtitleMode: this.avatar.value.Enabled ? 1 : 0,
+          SubtitleMode:
+            this.avatar.value.Enabled ||
+            (ttsConfig.ProviderParams as { resourceId?: string }).resourceId === 'seed-tts-2.0' ||
+            this.tts.provider === Provider.OpenAI ||
+            this.tts.provider === Provider.Google
+              ? 1
+              : 0,
         },
         ...(webSearch ? { WebSearchAgentConfig: webSearch } : {}),
       },
