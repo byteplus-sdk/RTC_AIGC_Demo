@@ -2,6 +2,30 @@
 
 Demo Online: https://demo.byteplus.com/rtc/solution/aigc
 
+## RTC CLI integration
+
+The `codex/rtc-cli-integration` branch is also an immutable remote template for
+`byteplus-rtc`. It keeps this Demo's UI and provider controls while adding a
+local companion server that can delegate RTC token issuance and VoiceChat
+Start/Stop to the authenticated CLI.
+
+```shell
+byteplus-rtc init --scene voice-agent --platform web
+cd <generated-project>
+byteplus-rtc auth login --browser=open
+byteplus-rtc dev
+```
+
+Copy `.env.example` to `.env.local` and provide the RTC AppID plus the selected
+model endpoint, model API-key resource ID, and speech application ID. Do not commit `.env.local`. When BytePlus
+AK/SK are absent, the server uses the CLI's isolated Signin session. When both
+AK/SK variables are present, the server signs BytePlus OpenAPI directly. RTC
+tokens use `GetToken` Version `2025-06-01`; an RTC AppKey is optional.
+
+In CLI mode, raw model and speech credentials are exchanged only inside the
+short-lived `byteplus-rtc` process. The Node server receives selectors and the
+final RTC request result, not the exchanged credentials.
+
 ## Introduction
 - In the AIGC conversation scenario, the Volcengine AIGC - RTC Server cloud service provides an end - to - end AIGC capability link based on streaming voice by integrating RTC audio and video stream processing, ASR voice recognition, large - model interface call integration, and TTS voice generation capabilities.
 - Users only need to call the standard - based OpenAPI interfaces to configure the required ASR, LLM, and TTS types and parameters. The Volcengine cloud computing service is responsible for edge user access, cloud resource scheduling, audio and video stream compression, text - to - voice conversion processing, and data subscription and transmission. This simplifies the development process, allowing developers to focus more on the training and debugging of the core capabilities of large models, thus rapidly promoting the innovation of AIGC product applications.
@@ -14,9 +38,9 @@ This demo supports two operation modes with different configuration requirements
 ### 🔧 Flexible Mode (VoiceChat Mode)
 Allows independent configuration of ASR, LLM, and TTS components with multiple provider options.
 
-You need to fill the following fields into `VOICE_CHAT_MODE` in `./Server/sensitive.js` according to the ASR/LLM/TTS vendor you use.
+For standalone development, configure provider values in `server/sensitive.js`. CLI-generated projects use `.env.local` instead.
 
-Besides, if using `BytePlusArk` as `LLM Module`, you need to fill the model endpoint ID in `ArkModel` (`File`: `src/config/voiceChat/llm.ts`), which could be gain from [BytePlus Ark Console](https://console.byteplus.com/ark/region:ark+ap-southeast-1/endpoint).
+Besides, if using `BytePlusArk` as `LLM Module`, you need to fill the model endpoint ID in `ArkModel` (`File`: `web/src/config/voiceChat/llm.ts`) for standalone development, or set `BYTEPLUS_MODEL_ENDPOINT_ID` for CLI development. It can be obtained from [BytePlus Ark Console](https://console.byteplus.com/ark/region:ark+ap-southeast-1/endpoint).
 
 ```
 VOICE_CHAT_MODE
@@ -59,7 +83,7 @@ VOICE_CHAT_MODE
 ### ⚡ Realtime Mode
 Uses OpenAI's integrated ASR+TTS solution with only LLM being configurable.
 
-You need to fill the OpenAI token into `REALTIME_API_MODE` in `./Server/sensitive.js`.
+You need to fill the OpenAI token into `REALTIME_API_MODE` in `server/sensitive.js`.
 
 ```
 REALTIME_API_MODE
@@ -71,30 +95,39 @@ REALTIME_API_MODE
 - **Node Version: 16.0+**
 1. Two terminals are required to start the server and the front-end page respectively.
 
-2. **RTC Basic Configuration** (`src/config/config.ts`)
+2. **RTC Basic Configuration** (`web/src/config/config.ts`)
    - **AppId**: Your BytePlus RTC App ID (required)
    - **RoomId**: Auto-generated UUID or custom room ID (optional)
    - **UserId**: Auto-generated UUID or custom user ID (optional) 
-   - **Token**: Token generated in [Byteplus Console](https://console.byteplus.com/rtc/listRTC) or leave it undefined for token auto-generation, demo will invoke api(defined in `./Server/app.js`) to generate token, which require your `RTC_APP_KEY` in `./Server/sensitive.js`.
+   - **Token**: Leave it undefined for automatic token generation. CLI mode delegates to `byteplus-rtc token issue`; direct AK/SK mode invokes BytePlus `GetToken`.
 
-3. **Server Configuration** (`Server/sensitive.js`)
+3. **Server Configuration** (`server/sensitive.js` for standalone mode, `.env.local` for CLI mode)
    - **RTC Basic Configuration**: Configure `RTC_APP_KEY` if you want to auto generate token in server.
    - **API Provider Credentials**:
      - **Flexible Mode**:
         - Configure `ASR`, `TTS`, `LLM`, and `Avatar` ( if enabled ) provider credentials as shown in the configuration tree above.
-        - If using `BytePlusArk` as `LLM Module`, you need to fill the model endpoint ID in `ArkModel` (`File`: `src/config/voiceChat/llm.ts`), which could be gain from [BytePlus Ark Console](https://console.byteplus.com/ark/region:ark+ap-southeast-1/endpoint).
+        - If using `BytePlusArk` as `LLM Module`, configure `BYTEPLUS_MODEL_ENDPOINT_ID` in CLI mode.
      - **Realtime Mode**: Only requires OpenAI `APIKey` in `LLMConfig.Token`.
 
 Refer to the configuration tree structure above for the complete list of required fields.
 
 ## Quick Start
-Please note that both the server and the web need to be started. The steps are as follows:
+Install and start both processes from the repository root:
+
+```shell
+yarn install
+yarn --cwd web install
+yarn --cwd server install
+yarn dev
+```
+
+The separate commands below remain available for standalone development.
 
 ### Server
 Enter the project root directory
 #### Install Dependencies
 ```shell
-cd Server
+cd server
 yarn
 ```
 #### Run the project
@@ -126,11 +159,11 @@ yarn dev:realtime
 ### FAQ
 | Issue | Solution |
 | :-- | :-- |
-| **After starting the AI agent, there is no response to conversation, or it keeps showing "AI preparing..."** | <li>This may be due to incomplete console permissions. Please refer to the [setup process](https://docs.byteplus.com/en/docs/byteplus-rtc/docs-1315561) to confirm all required operations are completed. This is the most likely cause, so please carefully verify that all necessary permissions have been granted.</li><li>There may be parameter issues, such as case sensitivity or type errors. Please double-check for these types of problems.</li><li>Related resources may not be enabled or there may be insufficient quota/overdue payments. Please verify again.</li><li>**Please ensure the model ID(See `src/config/voiceChat/llm.ts`) and other configurations are correct and available.**</li> |
+| **After starting the AI agent, there is no response to conversation, or it keeps showing "AI preparing..."** | <li>This may be due to incomplete console permissions. Please refer to the [setup process](https://docs.byteplus.com/en/docs/byteplus-rtc/docs-1315561) to confirm all required operations are completed.</li><li>Verify SeedASR 2.0, BytePlusArk and bidirectional Seed TTS 2.0 values.</li><li>Related resources may not be enabled or may have insufficient quota.</li> |
 | **Browser shows `Uncaught (in promise) r: token_error` error** | Please check if the RTC Token filled in your project is valid. Verify that the UserId, RoomId used to generate the Token, and the Token itself match what's configured in the project. The Token may also be expired - try regenerating it. |
 | **[StartVoiceChat]Failed(Reason: The task has been started. Please do not call the startup task interface repeatedly.)** error | If you've set fixed values for RoomId and UserId, repeatedly calling startAudioBot will cause errors. Simply call stopAudioBot first, then call startAudioBot again. |
 | Why aren't my devices working normally even though my microphone and camera are functioning? | This may be due to device permissions not being granted. Please check device permission settings. |
-| API calls return "Invalid 'Authorization' header, Pls check your authorization header" error | The AK/SK in `Server/sensitive.js` is incorrect |
+| API calls return "Invalid 'Authorization' header, Pls check your authorization header" error | Re-run `byteplus-rtc auth login` or verify the paired BytePlus AK/SK environment variables. |
 | What is RTC? | **R**eal **T**ime **C**ommunication. For more information about RTC concepts, please refer to the [official documentation](https://docs.byteplus.com/en/docs/byteplus-rtc/docs-66812). |
 
 If you encounter issues beyond those listed above, please feel free to contact us for feedback.

@@ -3,7 +3,7 @@
  * SPDX-license-identifier: BSD-3-Clause
  */
 
-import VERTC, {
+import BytePlusRTC, {
   LocalAudioPropertiesInfo,
   RemoteAudioPropertiesInfo,
   LocalStreamStats,
@@ -51,9 +51,9 @@ const useRtcListeners = (): IEventListener => {
     );
   };
 
-  const handleError = (e: { errorCode: typeof VERTC.ErrorCode.DUPLICATE_LOGIN }) => {
+  const handleError = (e: { errorCode: typeof BytePlusRTC.ErrorCode.DUPLICATE_LOGIN }) => {
     const { errorCode } = e;
-    if (errorCode === VERTC.ErrorCode.DUPLICATE_LOGIN) {
+    if (errorCode === BytePlusRTC.ErrorCode.DUPLICATE_LOGIN) {
       console.log('Kick out');
     }
   };

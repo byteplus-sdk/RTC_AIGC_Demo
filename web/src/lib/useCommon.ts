@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import VERTC, { MediaType } from '@byteplus/rtc';
+import BytePlusRTC, { MediaType } from '@byteplus/rtc';
 import { Modal } from '@arco-design/web-react';
 import Utils from '@/utils/utils';
 import openAPIs from '@/app/index';
@@ -81,7 +81,7 @@ export const useJoin = (): [
       return;
     }
 
-    const isSupported = await VERTC.isSupported();
+    const isSupported = await BytePlusRTC.isSupported();
     if (!isSupported) {
       Modal.error({
         title: 'RTC Not Supported',
@@ -92,6 +92,12 @@ export const useJoin = (): [
     }
 
     let token = aigcConfig.Token;
+    if (!aigcConfig.AppId || aigcConfig.AppId === 'Your AppId') {
+      const proxyHost = process.env.REACT_APP_AIGC_PROXY_HOST || 'http://localhost:3001';
+      const runtimeConfig = await fetch(`${proxyHost}/runtimeConfig`);
+      const runtime = await runtimeConfig.json();
+      aigcConfig.AppId = runtime?.Result?.appId;
+    }
     if (!token) {
       // Generate token using API
       // Or you can generate it manually in the console for testing, see README for more information.

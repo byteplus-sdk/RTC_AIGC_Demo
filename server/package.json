@@ -7,17 +7,19 @@
   "private": true,
   "dependencies": {
     "@byteplus/vcloud-sdk-nodejs": "^1.0.2",
+    "dotenv": "^16.4.7",
     "koa": "^2.15.3",
     "koa-bodyparser": "^4.4.1",
     "koa2-cors": "^2.0.6",
     "lodash": "^4.17.21",
     "node-fetch": "^2.3.2"
   },
-    "devDependencies": {
+  "devDependencies": {
     "nodemon": "^3.1.0"
   },
   "scripts": {
     "dev": "nodemon app.js",
-    "start": "nodemon app.js"
+    "start": "node app.js",
+    "test": "node --test"
   }
 }

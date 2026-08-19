@@ -18,7 +18,7 @@ import GoogleSVG from '@/assets/img/Google.svg';
 import AmazonSVG from '@/assets/img/Amazon.svg';
 import ArkSVG from '@/assets/img/Ark.svg';
 
-export const getEnvDomain = () => 'http://localhost:3001';
+export const getEnvDomain = () => process.env.REACT_APP_AIGC_PROXY_HOST || 'http://localhost:3001';
 
 export const AIGC_PROXY_HOST = getEnvDomain();
 

@@ -1,0 +1,48 @@
+{
+  "SceneConfig": {
+    "Name": "BytePlus voice agent",
+    "ContractVersion": "2025-05-01"
+  },
+  "VoiceChat": {
+    "Config": {
+      "ASRConfig": {
+        "Provider": "BytePlus",
+        "ProviderParams": {
+          "Mode": "SeedASR",
+          "Language": "zh-CN",
+          "AppId": "${BYTEPLUS_SEED_SPEECH_APP_ID}",
+          "AccessToken": "${BYTEPLUS_SEED_SPEECH_ACCESS_TOKEN}",
+          "ApiResourceId": "volc.seedasr.sauc.duration",
+          "StreamMode": 2,
+          "enable_nonstream": true
+        }
+      },
+      "LLMConfig": {
+        "Mode": "BytePlusArk",
+        "EndPointId": "${BYTEPLUS_MODEL_ENDPOINT_ID}",
+        "APIKey": "${BYTEPLUS_MODEL_API_KEY}",
+        "SystemMessages": ["You are a concise and helpful voice assistant."]
+      },
+      "TTSConfig": {
+        "Provider": "byteplus_Bidirectional_streaming",
+        "ProviderParams": {
+          "app": {
+            "appid": "${BYTEPLUS_SEED_SPEECH_APP_ID}",
+            "token": "${BYTEPLUS_SEED_SPEECH_ACCESS_TOKEN}"
+          },
+          "audio": {
+            "voice_type": "zh_female_vv_uranus_bigtts"
+          },
+          "resourceId": "seed-tts-2.0"
+        }
+      },
+      "SubtitleConfig": {
+        "SubtitleMode": 1
+      }
+    },
+    "AgentConfig": {
+      "UserID": "voice_agent",
+      "WelcomeMessage": "Hello."
+    }
+  }
+}

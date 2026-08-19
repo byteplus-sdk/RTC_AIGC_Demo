@@ -3,7 +3,7 @@
  * SPDX-license-identifier: BSD-3-Clause
  */
 
-import VERTC from '@byteplus/rtc';
+import BytePlusRTC from '@byteplus/rtc';
 import { Tag, Tooltip, Typography } from '@arco-design/web-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/store';
@@ -49,7 +49,7 @@ function Menu() {
           Mode <Tag size="small">{process.env.REACT_APP_MODE?.toUpperCase()}</Tag>
         </div>
         <div className={styles.bold}>Demo Version 1.4.0</div>
-        <div className={styles.bold}>SDK Version {VERTC.getSdkVersion()}</div>
+        <div className={styles.bold}>SDK Version {BytePlusRTC.getSdkVersion()}</div>
         {isJoined ? (
           <div className={styles.gray}>
             <span className={styles.bold}>RoomID </span>

@@ -30,7 +30,10 @@ yarn dev
 ├── ...
 └── sensitive.js  // File for injecting sensitive information.
 ```
-The only file you need to pay attention to and modify is the `sensitive.js` file. You don't need to make any changes to other files.
+For standalone mode, provider secrets can still be configured in `sensitive.js`.
+For CLI-generated projects, keep them in the root `.env.local`; the companion
+server delegates token and agent operations to `byteplus-rtc` and never writes
+those values into source files.
 
 You can fill in and modify the relevant information in `sensitive.js` as needed:
 - ACCOUNT_ID: Primary account ID

@@ -3,7 +3,7 @@
  * SPDX-license-identifier: BSD-3-Clause
  */
 
-import VERTC, {
+import BytePlusRTC, {
   StreamIndex,
   IRTCEngine,
   RoomProfileType,
@@ -88,7 +88,7 @@ export class RtcClient {
       user_id: props.uid,
     };
 
-    this.engine = VERTC.createEngine(this.config.appId);
+    this.engine = BytePlusRTC.createEngine(this.config.appId);
     try {
       const AIAnsExtension = new RTCAIAnsExtension();
       await this.engine.registerExtension(AIAnsExtension);
@@ -117,21 +117,27 @@ export class RtcClient {
     handleRoomBinaryMessageReceived,
     handleNetworkQuality,
   }: IEventListener) => {
-    this.engine.on(VERTC.events.onError, handleError);
-    this.engine.on(VERTC.events.onUserJoined, handleUserJoin);
-    this.engine.on(VERTC.events.onUserLeave, handleUserLeave);
-    this.engine.on(VERTC.events.onUserPublishStream, handleUserPublishStream);
-    this.engine.on(VERTC.events.onUserUnpublishStream, handleUserUnpublishStream);
-    this.engine.on(VERTC.events.onRemoteStreamStats, handleRemoteStreamStats);
-    this.engine.on(VERTC.events.onLocalStreamStats, handleLocalStreamStats);
-    this.engine.on(VERTC.events.onAudioDeviceStateChanged, handleAudioDeviceStateChanged);
-    this.engine.on(VERTC.events.onLocalAudioPropertiesReport, handleLocalAudioPropertiesReport);
-    this.engine.on(VERTC.events.onRemoteAudioPropertiesReport, handleRemoteAudioPropertiesReport);
+    this.engine.on(BytePlusRTC.events.onError, handleError);
+    this.engine.on(BytePlusRTC.events.onUserJoined, handleUserJoin);
+    this.engine.on(BytePlusRTC.events.onUserLeave, handleUserLeave);
+    this.engine.on(BytePlusRTC.events.onUserPublishStream, handleUserPublishStream);
+    this.engine.on(BytePlusRTC.events.onUserUnpublishStream, handleUserUnpublishStream);
+    this.engine.on(BytePlusRTC.events.onRemoteStreamStats, handleRemoteStreamStats);
+    this.engine.on(BytePlusRTC.events.onLocalStreamStats, handleLocalStreamStats);
+    this.engine.on(BytePlusRTC.events.onAudioDeviceStateChanged, handleAudioDeviceStateChanged);
+    this.engine.on(
+      BytePlusRTC.events.onLocalAudioPropertiesReport,
+      handleLocalAudioPropertiesReport
+    );
+    this.engine.on(
+      BytePlusRTC.events.onRemoteAudioPropertiesReport,
+      handleRemoteAudioPropertiesReport
+    );
 
-    this.engine.on(VERTC.events.onUserStartAudioCapture, handleUserStartAudioCapture);
-    this.engine.on(VERTC.events.onUserStopAudioCapture, handleUserStopAudioCapture);
-    this.engine.on(VERTC.events.onRoomBinaryMessageReceived, handleRoomBinaryMessageReceived);
-    this.engine.on(VERTC.events.onNetworkQuality, handleNetworkQuality);
+    this.engine.on(BytePlusRTC.events.onUserStartAudioCapture, handleUserStartAudioCapture);
+    this.engine.on(BytePlusRTC.events.onUserStopAudioCapture, handleUserStopAudioCapture);
+    this.engine.on(BytePlusRTC.events.onRoomBinaryMessageReceived, handleRoomBinaryMessageReceived);
+    this.engine.on(BytePlusRTC.events.onNetworkQuality, handleNetworkQuality);
   };
 
   joinRoom = (token: string | null, username: string): Promise<void> => {
@@ -158,7 +164,7 @@ export class RtcClient {
   leaveRoom = () => {
     this.stopAgent();
     this.engine.leaveRoom();
-    VERTC.destroyEngine(this.engine);
+    BytePlusRTC.destroyEngine(this.engine);
     this.#audioCaptureDevice = undefined;
   };
 
@@ -169,7 +175,7 @@ export class RtcClient {
     video: boolean;
     audio: boolean;
   }> {
-    return VERTC.enableDevices({
+    return BytePlusRTC.enableDevices({
       video: false,
       audio: true,
     });
@@ -187,13 +193,14 @@ export class RtcClient {
     let audioInputs: MediaDeviceInfo[] = [];
     let audioOutputs: MediaDeviceInfo[] = [];
     let videoInputs: MediaDeviceInfo[] = [];
-    const { video: hasVideoPermission, audio: hasAudioPermission } = await VERTC.enableDevices({
-      video,
-      audio,
-    });
+    const { video: hasVideoPermission, audio: hasAudioPermission } =
+      await BytePlusRTC.enableDevices({
+        video,
+        audio,
+      });
     if (audio) {
-      const inputs = await VERTC.enumerateAudioCaptureDevices();
-      const outputs = await VERTC.enumerateAudioPlaybackDevices();
+      const inputs = await BytePlusRTC.enumerateAudioCaptureDevices();
+      const outputs = await BytePlusRTC.enumerateAudioPlaybackDevices();
       audioInputs = inputs.filter((i) => i.deviceId && i.kind === 'audioinput');
       audioOutputs = outputs.filter((i) => i.deviceId && i.kind === 'audiooutput');
       this.#audioCaptureDevice = audioInputs.filter((i) => i.deviceId)?.[0]?.deviceId;
@@ -211,7 +218,7 @@ export class RtcClient {
       }
     }
     if (video) {
-      videoInputs = await VERTC.enumerateVideoCaptureDevices();
+      videoInputs = await BytePlusRTC.enumerateVideoCaptureDevices();
       videoInputs = videoInputs.filter((i) => i.deviceId && i.kind === 'videoinput');
       this.#videoCaptureDevice = videoInputs?.[0]?.deviceId;
       if (hasVideoPermission) {
