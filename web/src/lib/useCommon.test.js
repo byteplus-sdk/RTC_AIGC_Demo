@@ -25,6 +25,7 @@ let root;
 let container;
 let previousAppId;
 let previousGenerateToken;
+let previousFetch;
 function Harness() {
   const [joining, join] = useJoin();
   return (
@@ -41,6 +42,11 @@ beforeEach(() => {
   previousAppId = config.AppId;
   previousGenerateToken = openAPIs.GenerateRtcAccessToken;
   config.AppId = 'Your AppId';
+  previousFetch = global.fetch;
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({ Result: { appId: 'test-app' } }),
+  });
   Modal.error.mockClear();
   BytePlusRTC.isSupported.mockResolvedValue(true);
   container = document.createElement('div');
@@ -62,6 +68,7 @@ beforeEach(() => {
 afterEach(() => {
   act(() => root.unmount());
   config.AppId = previousAppId;
+  global.fetch = previousFetch;
   openAPIs.GenerateRtcAccessToken = previousGenerateToken;
 });
 
@@ -158,4 +165,25 @@ test('exit waits for cleanup and coalesces repeated clicks', async () => {
     'room/updateAIGCState',
     'room/clearHistoryMsg',
   ]);
+});
+
+test('runtime AppId is loaded before token issuance', async () => {
+  openAPIs.GenerateRtcAccessToken = jest.fn().mockRejectedValue(new Error('token unavailable'));
+  await act(async () => container.querySelector('button').click());
+  expect(global.fetch).toHaveBeenCalledWith(expect.stringMatching(/\/runtimeConfig$/));
+  expect(openAPIs.GenerateRtcAccessToken).toHaveBeenCalledWith({
+    appID: 'test-app',
+    roomID: 'room',
+    userID: 'user',
+  });
+});
+
+test('runtime configuration failure releases the join attempt for retry', async () => {
+  global.fetch.mockRejectedValue(new TypeError('Failed to fetch'));
+  openAPIs.GenerateRtcAccessToken = jest.fn();
+  await act(async () => container.querySelector('button').click());
+  expect(container.textContent).toBe('Call now');
+  expect(openAPIs.GenerateRtcAccessToken).not.toHaveBeenCalled();
+  await act(async () => container.querySelector('button').click());
+  expect(global.fetch).toHaveBeenCalledTimes(2);
 });

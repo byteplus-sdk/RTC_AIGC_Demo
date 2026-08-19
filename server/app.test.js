@@ -1,108 +1,166 @@
 const assert = require('node:assert/strict');
+const { EventEmitter } = require('node:events');
+const { PassThrough } = require('node:stream');
 const test = require('node:test');
-const fetch = require('node-fetch');
-const { createApp } = require('./app');
-const { VOICE_CHAT_MODE, REALTIME_API_MODE } = require('./sensitive');
 
-async function serve(t, options) {
-  const server = createApp(options).listen(0, '127.0.0.1');
-  await new Promise((resolve, reject) => {
-    server.once('listening', resolve);
-    server.once('error', reject);
-  });
-  t.after(() => new Promise((resolve) => server.close(resolve)));
-  return `http://127.0.0.1:${server.address().port}`;
+const {
+  injectEnvironmentSecrets,
+  issueToken,
+  loadRuntimeConfig,
+  prepareAgentBody,
+  runCLI,
+} = require('./app');
+
+function cliConfig() {
+  const env = {
+    RTC_APP_ID: 'test-app',
+    BYTEPLUS_RTC_CLI_PATH: '/tmp/byteplus-rtc',
+    BYTEPLUS_RTC_PROJECT_DIR: '/tmp/project',
+  };
+  return loadRuntimeConfig(env);
 }
 
-function post(url, body) {
-  return fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-}
-
-for (const action of [
-  'StartVoiceChat',
-  'StopVoiceChat',
-  'StartVoiceChatWithRealtimeAPI',
-  'StopVoiceChatWithRealtimeAPI',
-]) {
-  test(`${action} forwards the request and OpenAPI response`, async (t) => {
-    const response = { ResponseMetadata: { Action: action }, Result: 'ok' };
-    let forwarded;
-    const base = await serve(t, {
-      fetchImpl: async (url, options) => {
-        assert.equal(new URL(url).searchParams.get('Action'), action);
-        forwarded = JSON.parse(options.body);
-        return { json: async () => response };
-      },
+function successfulSpawn(data, inspect) {
+  return (command, args, options) => {
+    inspect?.({ command, args, options });
+    const child = new EventEmitter();
+    child.stdin = new PassThrough();
+    child.stdout = new PassThrough();
+    child.stderr = new PassThrough();
+    child.kill = () => undefined;
+    process.nextTick(() => {
+      child.stdout.end(`${JSON.stringify({ ok: true, data })}\n`);
+      child.emit('close', 0);
     });
-    const flexible = action === 'StartVoiceChat' || action === 'StopVoiceChat';
-    const body = flexible
-      ? { Config: { LLMConfig: { Mode: 'CustomLLM' } } }
-      : { LLMConfig: { Token: 'client-token' } };
-    const res = await post(`${base}/proxyAIGCFetch?action=${action}`, body);
-    assert.equal(res.status, 200);
-    assert.deepEqual(await res.json(), response);
-    if (flexible) {
-      assert.equal(forwarded.Config.LLMConfig.APIKey, VOICE_CHAT_MODE.LLMConfig.CustomLLM.APIKey);
-    } else {
-      assert.equal(forwarded.LLMConfig.Token, REALTIME_API_MODE.LLMConfig.Token);
-    }
-  });
+    return child;
+  };
 }
 
-test('token generation returns a locally signed token', async (t) => {
-  const base = await serve(t);
-  const res = await post(`${base}/generateRtcAccessToken?action=GenerateRtcAccessToken`, {
-    appID: 'test-app', roomID: 'test-room', userID: 'test-user',
+function failedSpawn(errorEnvelope) {
+  return () => {
+    const child = new EventEmitter();
+    child.stdin = new PassThrough();
+    child.stdout = new PassThrough();
+    child.stderr = new PassThrough();
+    child.kill = () => undefined;
+    process.nextTick(() => {
+      child.stderr.end(`progress that may contain secret-material\n${JSON.stringify(errorEnvelope)}\n`);
+      child.emit('close', 1);
+    });
+    return child;
+  };
+}
+
+test('CLI mode requires no long-term AK/SK', () => {
+  const config = cliConfig();
+  assert.equal(config.mode, 'cli');
+  assert.equal(config.appId, 'test-app');
+});
+
+test('partial AK/SK configuration fails closed', () => {
+  assert.throws(
+    () => loadRuntimeConfig({ RTC_APP_ID: 'test-app', BYTEPLUS_ACCESS_KEY_ID: 'ak' }),
+    /must be set together/
+  );
+});
+
+test('CLI JSON transport uses the configured binary and project', async () => {
+  let call;
+  const result = await runCLI(
+    cliConfig(),
+    ['agent', 'start', '--runtime-request-stdin'],
+    { AppId: 'test-app' },
+    successfulSpawn({ status: 'running' }, (value) => {
+      call = value;
+    })
+  );
+  assert.deepEqual(result, { status: 'running' });
+  assert.equal(call.command, '/tmp/byteplus-rtc');
+  assert.deepEqual(call.args, ['--format=json', 'agent', 'start', '--runtime-request-stdin']);
+  assert.equal(call.options.cwd, '/tmp/project');
+});
+
+test('token issuance delegates matching room and user to byteplus-rtc', async () => {
+  let args;
+  const token = await issueToken(
+    cliConfig(),
+    { appID: 'test-app', roomID: 'room-1', userID: 'user-1' },
+    {
+      spawnImpl: successfulSpawn({ token: 'sanitized-token' }, (call) => {
+        args = call.args;
+      }),
+    }
+  );
+  assert.equal(token, 'sanitized-token');
+  assert.deepEqual(args, [
+    '--format=json',
+    'token',
+    'issue',
+    '--room-id',
+    'room-1',
+    '--user-id',
+    'user-1',
+  ]);
+});
+
+test('CLI failures expose the typed message without leaking stderr', async () => {
+  await assert.rejects(
+    () =>
+      runCLI(
+        cliConfig(),
+        ['token', 'issue'],
+        undefined,
+        failedSpawn({
+          ok: false,
+          error: {
+            code: 'byteplus-rtc.config.not_found',
+            message: 'byteplus-rtc.config.yaml not found',
+          },
+        })
+      ),
+    (error) => {
+      assert.match(error.message, /byteplus-rtc\.config\.not_found: byteplus-rtc\.config\.yaml not found/);
+      assert.doesNotMatch(error.message, /secret-material/);
+      return true;
+    }
+  );
+});
+
+test('environment injection pins the verified BytePlus provider fields', () => {
+  const body = {
+    Config: {
+      ASRConfig: { Provider: 'BytePlus', ProviderParams: {} },
+      LLMConfig: { Mode: 'BytePlusArk' },
+      TTSConfig: { Provider: 'byteplus_Bidirectional_streaming', ProviderParams: {} },
+    },
+  };
+  injectEnvironmentSecrets(body, {
+    BYTEPLUS_SEED_SPEECH_APP_ID: 'speech-app',
+    BYTEPLUS_SEED_SPEECH_ACCESS_TOKEN: 'speech-token',
+    BYTEPLUS_MODEL_ENDPOINT_ID: 'model-endpoint',
+    BYTEPLUS_MODEL_API_KEY: 'model-key',
   });
-  assert.equal(res.status, 200);
-  const body = await res.json();
-  assert.equal(body.ResponseMetadata.Action, 'GenerateRtcAccessToken');
-  assert.equal(typeof body.Result.token, 'string');
-  assert.ok(body.Result.token.length > 0);
+  assert.equal(body.Config.ASRConfig.ProviderParams.AppId, 'speech-app');
+  assert.equal(body.Config.LLMConfig.EndPointId, 'model-endpoint');
+  assert.equal(body.Config.TTSConfig.ProviderParams.app.token, 'speech-token');
 });
 
-test('missing token input returns an actionable error', async (t) => {
-  const base = await serve(t);
-  const res = await post(`${base}/generateRtcAccessToken?action=GenerateRtcAccessToken`, {});
-  assert.equal(res.status, 400);
-  const body = await res.json();
-  assert.equal(body.ResponseMetadata.Action, 'GenerateRtcAccessToken');
-  assert.equal(body.ResponseMetadata.Error.Code, 'LocalProxyError');
-  assert.equal(body.Result, 'GenerateRtcAccessToken failed');
-});
-
-test('upstream failures return a structured error', async (t) => {
-  const base = await serve(t, {
-    fetchImpl: async () => { throw new Error('upstream unavailable'); },
-  });
-  const res = await post(`${base}/proxyAIGCFetch?action=StopVoiceChat`, {});
-  assert.equal(res.status, 502);
-  const body = await res.json();
-  assert.equal(body.ResponseMetadata.Action, 'StopVoiceChat');
-  assert.equal(body.ResponseMetadata.Error.Message, 'upstream unavailable');
-  assert.equal(body.Result, 'upstream unavailable');
-});
-
-test('malformed JSON returns a structured client error', async (t) => {
-  const base = await serve(t);
-  const res = await fetch(`${base}/proxyAIGCFetch?action=StartVoiceChat`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{',
-  });
-  assert.equal(res.status, 400);
-  const body = await res.json();
-  assert.equal(body.ResponseMetadata.Error.Code, 'LocalProxyError');
-  assert.equal(typeof body.Result, 'string');
-});
-
-test('unknown routes and route suffixes return 404', async (t) => {
-  const base = await serve(t);
-  for (const path of ['/missing', '/proxyAIGCFetch/extra', '/generateRtcAccessToken/extra']) {
-    const res = await post(`${base}${path}`, {});
-    assert.equal(res.status, 404);
-    assert.deepEqual(await res.json(), { Result: 'Not Found' });
-  }
+test('CLI-mode app does not inject provider secrets in the Node process', async () => {
+  const config = cliConfig();
+  config.env = {
+    ...config.env,
+    BYTEPLUS_SEED_SPEECH_APP_ID: 'selector-only',
+    BYTEPLUS_MODEL_ENDPOINT_ID: 'endpoint-only',
+  };
+  const body = {
+    Config: {
+      ASRConfig: { Provider: 'BytePlus', ProviderParams: {} },
+      LLMConfig: { Mode: 'BytePlusArk' },
+      TTSConfig: { Provider: 'byteplus_Bidirectional_streaming', ProviderParams: {} },
+    },
+  };
+  prepareAgentBody(config, 'StartVoiceChat', body);
+  assert.equal(body.Config.ASRConfig.ProviderParams.AccessToken, undefined);
+  assert.equal(body.Config.LLMConfig.APIKey, undefined);
+  assert.equal(body.Config.TTSConfig.ProviderParams.app, undefined);
 });
