@@ -5,7 +5,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import VERTC, { MediaType } from '@byteplus/rtc';
+import BytePlusRTC, { MediaType } from '@byteplus/rtc';
 import { Modal } from '@arco-design/web-react';
 import Utils from '@/utils/utils';
 import openAPIs from '@/app/index';
@@ -83,7 +83,7 @@ export const useJoin = (): [
     setJoining(true);
     let engineCreated = false;
     try {
-      const isSupported = await VERTC.isSupported();
+      const isSupported = await BytePlusRTC.isSupported();
       if (!isSupported) {
         Modal.error({
           title: 'RTC Not Supported',
