@@ -5,6 +5,8 @@
 
 import ReactDOM from 'react-dom/client';
 import { Provider } from 'react-redux';
+import { ConfigProvider } from '@arco-design/web-react';
+import enUS from '@arco-design/web-react/es/locale/en-US';
 import App from './App';
 import store from './store';
 import './index.less';
@@ -12,6 +14,8 @@ import './index.less';
 const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement);
 root.render(
   <Provider store={store}>
-    <App />
+    <ConfigProvider locale={enUS}>
+      <App />
+    </ConfigProvider>
   </Provider>
 );
