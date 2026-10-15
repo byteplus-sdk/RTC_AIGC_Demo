@@ -1,44 +1,25 @@
-# Introduction
-This is a minimally simplified server that can be launched locally. You need to start this server to provide services, and the front - end page will call the interfaces of this server.
+# API Server
 
-This server mainly serves two purposes:
-1. Injection of sensitive information. It is generally not recommended to define sensitive information in plain text directly in the front - end code (since front - end code is visible in the browser, posing a risk of leakage).
-2. Invocation of Byteplus OpenAPI.
+The Koa server generates RTC room tokens, injects provider credentials and calls BytePlus OpenAPI.
 
-# Usage Guide
-You can refer to the README.md file in the root directory or the following instructions:
+Configure the root `.env.local` following the [project README](../README.md#configuration-overview).
 
-## Install Dependencies
-```
-yarn
-```
-## Run the Project
-```
-node app.js
-```
-or
-```
-yarn dev
+Start both services from the repository root:
+
+```shell
+npm run dev
 ```
 
-# File Directory and Explanation
-```
-.
-├── app.js        // Server entry file.
-├── token.js      // RTC access token generation utilities.
-├── util.js       // Helper functions for API handling.
-├── ...
-└── sensitive.js  // File for injecting sensitive information.
-```
-The only file you need to pay attention to and modify is the `sensitive.js` file. You don't need to make any changes to other files.
+For Flexible mode:
 
-You can fill in and modify the relevant information in `sensitive.js` as needed:
-- ACCOUNT_ID: Primary account ID
-- SUB_ACCOUNT_NAME: Sub - account name
-- ACCOUNT_INFO: Primary account information
-- **VOICE_CHAT_MODE**: Sensitive information under the one - stop solution mode
-- **REALTIME_API_MODE**: Sensitive information under the Realtime solution mode
-The relevant information is marked in the comments.
+```shell
+npm run dev:flexible
+```
 
-# Frequently Asked Questions
-Refer to the README.md file in the root directory.
+To start the API server separately:
+
+```shell
+npm run dev:server
+```
+
+The API server loads the root `.env.local` and listens on port `3001` by default.
