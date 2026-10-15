@@ -155,11 +155,18 @@ export class RtcClient {
     );
   };
 
-  leaveRoom = () => {
-    this.stopAgent();
-    this.engine.leaveRoom();
-    VERTC.destroyEngine(this.engine);
-    this.#audioCaptureDevice = undefined;
+  leaveRoom = async () => {
+    const engine = this.engine;
+    try {
+      await this.stopAgent();
+    } finally {
+      try {
+        await engine.leaveRoom();
+      } finally {
+        VERTC.destroyEngine(engine);
+        if (this.engine === engine) this.#audioCaptureDevice = undefined;
+      }
+    }
   };
 
   /**

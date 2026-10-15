@@ -18,6 +18,9 @@ module.exports = {
       '/generateRtcAccessToken': `http://localhost:${process.env.SERVER_PORT || 3001}`,
     },
   },
+  jest: {
+    configure: { moduleNameMapper: { '^@/(.*)$': '<rootDir>/src/$1' } },
+  },
   plugins: [
     {
       plugin: CracoLessPlugin,

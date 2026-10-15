@@ -4,7 +4,7 @@
  */
 
 import { Button, Drawer, Input } from '@arco-design/web-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import isEqual from 'lodash/isEqual';
 import { IconSwap } from '@arco-design/web-react/icon';
@@ -165,7 +165,7 @@ function AISettings() {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<Partial<ConfigFactory>>(getSettings());
-  const infos = useMemo(() => {
+  const infos = (() => {
     const allVoices = {
       ...OPENAI_VOICE_TYPE,
       ...BYTE_PLUS_VOICE_TYPE,
@@ -206,14 +206,7 @@ function AISettings() {
             ? `Avatar ${`${utils.capitalizeFirstLetter(room.aiConfig.avatar).substring(0, 12)}...`}`
             : void 0,
         ].filter(Boolean);
-  }, [
-    room.aiConfig.voice,
-    room.aiConfig.endPointId,
-    room.aiConfig['Provider.ASR'],
-    room.aiConfig.SeedAsrVersion,
-    room.aiConfig['Provider.Avatar'],
-    room.aiConfig.avatar,
-  ]);
+  })();
 
   const handleClick = () => {
     setOpen(true);

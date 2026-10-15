@@ -83,7 +83,7 @@ function CheckBoxSelector(props: IProps) {
    */
   const selectedOne = useMemo(() => {
     return (isRatioMode ? data?.[selectedRatio] : data)?.find((item) => item.value === selected);
-  }, [data, selected, selectedRatio]);
+  }, [data, selected, selectedRatio, isRatioMode]);
 
   const handleSeeMore = () => {
     setVisible(true);
@@ -113,13 +113,13 @@ function CheckBoxSelector(props: IProps) {
         optionRender(data)
       );
     },
-    [selectedRatio, selectedOne, data]
+    [selectedRatio, data, isRatioMode]
   );
 
   useEffect(() => {
     setSelectedRatio(checked!);
     setSelected(value!);
-  }, [visible, value]);
+  }, [visible, value, checked]);
 
   return (
     <>
