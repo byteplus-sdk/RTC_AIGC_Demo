@@ -4,7 +4,7 @@
   "private": true,
   "license": "BSD-3-Clause",
   "scripts": {
-    "setup": "npm install && npm --prefix server install && npm --prefix web install",
+    "setup": "npm install && npm --prefix server install && npm --prefix web install --legacy-peer-deps",
     "dev": "npm run dev:realtime",
     "dev:realtime": "concurrently -k -n server,web \"npm run dev:server\" \"npm --prefix web run dev:realtime\"",
     "dev:flexible": "concurrently -k -n server,web \"npm run dev:server\" \"npm --prefix web run dev:flexible\"",
