@@ -14,8 +14,8 @@ module.exports = {
   },
   devServer: {
     proxy: {
-      '/proxyAIGCFetch': 'http://localhost:3001',
-      '/generateRtcAccessToken': 'http://localhost:3001',
+      '/proxyAIGCFetch': `http://localhost:${process.env.SERVER_PORT || 3001}`,
+      '/generateRtcAccessToken': `http://localhost:${process.env.SERVER_PORT || 3001}`,
     },
   },
   plugins: [

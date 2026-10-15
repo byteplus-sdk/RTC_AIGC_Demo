@@ -71,7 +71,6 @@ app.use(async (ctx) => {
   if (ctx.url.startsWith('/generateRtcAccessToken') && ctx.method.toLowerCase() === 'post') {
     const Action = ctx.request.query.action;
     const { appID, roomID, userID } = ctx.request.body;
-    const accessToken = generateRtcAccessToken({ appID, appKey: RTC_APP_KEY, roomID, userID });
     const ResponseMetadata = { Action };
 
     /** Validate required parameters */
@@ -82,6 +81,7 @@ app.use(async (ctx) => {
       };
       return;
     }
+    const accessToken = generateRtcAccessToken({ appID, appKey: RTC_APP_KEY, roomID, userID });
     ctx.body = {
       ResponseMetadata,
       Result: {
@@ -94,6 +94,8 @@ app.use(async (ctx) => {
   ctx.body = '<h1>404 Not Found</h1>';
 });
 
-app.listen(3001, () => {
-  console.log('AIGC Server is running at http://localhost:3001');
+const port = process.env.SERVER_PORT || 3001;
+
+app.listen(port, () => {
+  console.log(`AIGC Server is running at http://localhost:${port}`);
 });

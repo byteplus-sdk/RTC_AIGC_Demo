@@ -121,6 +121,12 @@ Development API requests use the web development proxy. Set `REACT_APP_AIGC_PROX
 in `web/.env.local` to use another API server. Production builds default to
 `http://localhost:3001`; set this variable at build time for your deployment.
 
+Set `PORT` and `SERVER_PORT` to run on custom web and API ports:
+
+```shell
+PORT=3100 SERVER_PORT=3101 npm run dev
+```
+
 Individual services and validation commands:
 
 ```shell

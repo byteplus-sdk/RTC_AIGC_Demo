@@ -270,7 +270,7 @@ function AISettings() {
         </div>
       </div>
       <Drawer
-        width={utils.isMobile() ? '100%' : 870}
+        width={utils.isMobile() ? '100%' : 'min(870px, 100vw)'}
         closable={false}
         maskClosable={false}
         escToExit={false}
