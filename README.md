@@ -14,9 +14,9 @@ This demo supports two operation modes with different configuration requirements
 ### 🔧 Flexible Mode (VoiceChat Mode)
 Allows independent configuration of ASR, LLM, and TTS components with multiple provider options.
 
-You need to fill the following fields into `VOICE_CHAT_MODE` in `./Server/sensitive.js` according to the ASR/LLM/TTS vendor you use.
+You need to fill the following fields into `VOICE_CHAT_MODE` in `./server/sensitive.js` according to the ASR/LLM/TTS vendor you use.
 
-Besides, if using `BytePlusArk` as `LLM Module`, you need to fill the model endpoint ID in `ArkModel` (`File`: `src/config/voiceChat/llm.ts`), which could be gain from [BytePlus Ark Console](https://console.byteplus.com/ark/region:ark+ap-southeast-1/endpoint).
+Besides, if using `BytePlusArk` as `LLM Module`, you need to fill the model endpoint ID in `ArkModel` (`File`: `web/src/config/voiceChat/llm.ts`), which could be gain from [BytePlus Ark Console](https://console.byteplus.com/ark/region:ark+ap-southeast-1/endpoint).
 
 ```
 VOICE_CHAT_MODE
@@ -59,7 +59,7 @@ VOICE_CHAT_MODE
 ### ⚡ Realtime Mode
 Uses OpenAI's integrated ASR+TTS solution with only LLM being configurable.
 
-You need to fill the OpenAI token into `REALTIME_API_MODE` in `./Server/sensitive.js`.
+You need to fill the OpenAI token into `REALTIME_API_MODE` in `./server/sensitive.js`.
 
 ```
 REALTIME_API_MODE
@@ -67,70 +67,80 @@ REALTIME_API_MODE
     └── Token (OpenAI API Key)
 ```
 
-## Environment Preparation
-- **Node Version: 16.0+**
-1. Two terminals are required to start the server and the front-end page respectively.
+## Project Structure
 
-2. **RTC Basic Configuration** (`src/config/config.ts`)
+```text
+.
+├── server/          Koa API server and provider credentials
+├── web/             React application and frontend tooling
+└── package.json     Development and build commands
+```
+
+## Environment Preparation
+
+- Node.js 18 or later.
+
+1. **RTC Basic Configuration** (`web/src/config/config.ts`)
    - **AppId**: Your BytePlus RTC App ID (required)
    - **RoomId**: Auto-generated UUID or custom room ID (optional)
    - **UserId**: Auto-generated UUID or custom user ID (optional) 
-   - **Token**: Token generated in [Byteplus Console](https://console.byteplus.com/rtc/listRTC) or leave it undefined for token auto-generation, demo will invoke api(defined in `./Server/app.js`) to generate token, which require your `RTC_APP_KEY` in `./Server/sensitive.js`.
+   - **Token**: Token generated in [Byteplus Console](https://console.byteplus.com/rtc/listRTC) or leave it undefined for token auto-generation, demo will invoke api(defined in `./server/app.js`) to generate token, which require your `RTC_APP_KEY` in `./server/sensitive.js`.
 
-3. **Server Configuration** (`Server/sensitive.js`)
+2. **Server Configuration** (`server/sensitive.js`)
    - **RTC Basic Configuration**: Configure `RTC_APP_KEY` if you want to auto generate token in server.
    - **API Provider Credentials**:
      - **Flexible Mode**:
         - Configure `ASR`, `TTS`, `LLM`, and `Avatar` ( if enabled ) provider credentials as shown in the configuration tree above.
-        - If using `BytePlusArk` as `LLM Module`, you need to fill the model endpoint ID in `ArkModel` (`File`: `src/config/voiceChat/llm.ts`), which could be gain from [BytePlus Ark Console](https://console.byteplus.com/ark/region:ark+ap-southeast-1/endpoint).
+        - If using `BytePlusArk` as `LLM Module`, you need to fill the model endpoint ID in `ArkModel` (`File`: `web/src/config/voiceChat/llm.ts`), which could be gain from [BytePlus Ark Console](https://console.byteplus.com/ark/region:ark+ap-southeast-1/endpoint).
      - **Realtime Mode**: Only requires OpenAI `APIKey` in `LLMConfig.Token`.
 
 Refer to the configuration tree structure above for the complete list of required fields.
 
 ## Quick Start
-Please note that both the server and the web need to be started. The steps are as follows:
 
-### Server
-Enter the project root directory
-#### Install Dependencies
+Install dependencies from the project root:
+
 ```shell
-cd Server
-yarn
-```
-#### Run the project
-```shell
-node app.js
-```
-or
-```
-yarn dev
+npm run setup
 ```
 
-### Front-End Page
-Enter the project root directory
-#### Install Dependencies
-```shell
-yarn
-```
-#### Run the project
+Start the server and web application in Realtime mode:
 
-For **Flexible Mode** (customizable ASR/LLM/TTS):
 ```shell
-yarn dev:flexible
+npm run dev
 ```
 
-For **Realtime Mode** (OpenAI integrated solution):
+For Flexible mode:
+
 ```shell
-yarn dev:realtime
+npm run dev:flexible
 ```
+
+The web application runs at http://localhost:3000 and the API server at http://localhost:3001.
+Development API requests use the web development proxy. Set `REACT_APP_AIGC_PROXY_HOST`
+in `web/.env.local` to use another API server. Production builds default to
+`http://localhost:3001`; set this variable at build time for your deployment.
+
+Individual services and validation commands:
+
+```shell
+npm run dev:server
+npm run dev:web
+npm run typecheck
+npm test
+npm run build
+```
+
+The production web output is written to `web/build/`.
+
 ### FAQ
 | Issue | Solution |
 | :-- | :-- |
-| **After starting the AI agent, there is no response to conversation, or it keeps showing "AI preparing..."** | <li>This may be due to incomplete console permissions. Please refer to the [setup process](https://docs.byteplus.com/en/docs/byteplus-rtc/docs-1315561) to confirm all required operations are completed. This is the most likely cause, so please carefully verify that all necessary permissions have been granted.</li><li>There may be parameter issues, such as case sensitivity or type errors. Please double-check for these types of problems.</li><li>Related resources may not be enabled or there may be insufficient quota/overdue payments. Please verify again.</li><li>**Please ensure the model ID(See `src/config/voiceChat/llm.ts`) and other configurations are correct and available.**</li> |
+| **After starting the AI agent, there is no response to conversation, or it keeps showing "AI preparing..."** | <li>This may be due to incomplete console permissions. Please refer to the [setup process](https://docs.byteplus.com/en/docs/byteplus-rtc/docs-1315561) to confirm all required operations are completed. This is the most likely cause, so please carefully verify that all necessary permissions have been granted.</li><li>There may be parameter issues, such as case sensitivity or type errors. Please double-check for these types of problems.</li><li>Related resources may not be enabled or there may be insufficient quota/overdue payments. Please verify again.</li><li>**Please ensure the model ID(See `web/src/config/voiceChat/llm.ts`) and other configurations are correct and available.**</li> |
 | **Browser shows `Uncaught (in promise) r: token_error` error** | Please check if the RTC Token filled in your project is valid. Verify that the UserId, RoomId used to generate the Token, and the Token itself match what's configured in the project. The Token may also be expired - try regenerating it. |
 | **[StartVoiceChat]Failed(Reason: The task has been started. Please do not call the startup task interface repeatedly.)** error | If you've set fixed values for RoomId and UserId, repeatedly calling startAudioBot will cause errors. Simply call stopAudioBot first, then call startAudioBot again. |
 | Why aren't my devices working normally even though my microphone and camera are functioning? | This may be due to device permissions not being granted. Please check device permission settings. |
-| API calls return "Invalid 'Authorization' header, Pls check your authorization header" error | The AK/SK in `Server/sensitive.js` is incorrect |
+| API calls return "Invalid 'Authorization' header, Pls check your authorization header" error | The AK/SK in `server/sensitive.js` is incorrect |
 | What is RTC? | **R**eal **T**ime **C**ommunication. For more information about RTC concepts, please refer to the [official documentation](https://docs.byteplus.com/en/docs/byteplus-rtc/docs-66812). |
 
 If you encounter issues beyond those listed above, please feel free to contact us for feedback.

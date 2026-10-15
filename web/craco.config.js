@@ -12,6 +12,12 @@ module.exports = {
       '@': path.resolve(__dirname, 'src'),
     },
   },
+  devServer: {
+    proxy: {
+      '/proxyAIGCFetch': 'http://localhost:3001',
+      '/generateRtcAccessToken': 'http://localhost:3001',
+    },
+  },
   plugins: [
     {
       plugin: CracoLessPlugin,

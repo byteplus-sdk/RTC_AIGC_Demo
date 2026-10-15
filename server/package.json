@@ -13,11 +13,11 @@
     "lodash": "^4.17.21",
     "node-fetch": "^2.3.2"
   },
-    "devDependencies": {
+  "devDependencies": {
     "nodemon": "^3.1.0"
   },
   "scripts": {
     "dev": "nodemon app.js",
-    "start": "nodemon app.js"
+    "start": "node app.js"
   }
 }

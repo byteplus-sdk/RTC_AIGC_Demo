@@ -1,71 +1,20 @@
 {
-  "name": "aigc",
+  "name": "byteplus-rtc-aigc-demo",
   "version": "1.4.0",
-  "license": "BSD-3-Clause",
   "private": true,
-  "dependencies": {
-    "@arco-design/web-react": "^2.65.0",
-    "@byteplus/rtc": "~4.67.2",
-    "@reduxjs/toolkit": "^1.8.3",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-redux": "^8.0.2",
-    "react-router": "^6.3.0",
-    "react-router-dom": "^6.3.0",
-    "redux": "^4.2.0",
-    "uuid": "^8.3.2"
-  },
+  "license": "BSD-3-Clause",
   "scripts": {
+    "setup": "npm install && npm --prefix server install && npm --prefix web install",
     "dev": "npm run dev:realtime",
-    "dev:server": "node ./Server/app.js",
-    "dev:realtime": "npm run echo && cross-env REACT_APP_MODE=realtime craco start",
-    "dev:flexible": "npm run echo && cross-env REACT_APP_MODE=flexible craco start",
-    "build": "craco build",
-    "test": "craco test",
-    "eject": "react-scripts eject",
-    "prettier": "prettier --write '**/*.{js,jsx,tsx,ts,less,md,json}'",
-    "eslint": "eslint  src/ --fix --cache --quiet --ext .js,.jsx,.ts,.tsx",
-    "stylelint": "stylelint 'src/**/*.less' --fix",
-    "pre-commit": "npm run eslint && npm run stylelint",
-    "echo": "node message.js"
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
+    "dev:realtime": "concurrently -k -n server,web \"npm run dev:server\" \"npm --prefix web run dev:realtime\"",
+    "dev:flexible": "concurrently -k -n server,web \"npm run dev:server\" \"npm --prefix web run dev:flexible\"",
+    "dev:server": "npm --prefix server run dev",
+    "dev:web": "npm --prefix web run dev",
+    "build": "npm --prefix web run build",
+    "typecheck": "npm --prefix web run typecheck",
+    "test": "npm --prefix web test -- --watchAll=false --passWithNoTests"
   },
   "devDependencies": {
-    "@craco/craco": "^6.4.5",
-    "@types/lodash": "^4.17.4",
-    "@types/node": "^16.11.45",
-    "@types/react": "^18.0.15",
-    "@types/react-dom": "^18.0.6",
-    "@types/uuid": "^8.3.4",
-    "craco-less": "^2.0.0",
-    "cross-env": "^7.0.3",
-    "eslint-config-airbnb": "^19.0.4",
-    "eslint-config-prettier": "^8.5.0",
-    "eslint-plugin-babel": "^5.3.1",
-    "eslint-plugin-prettier": "^4.2.1",
-    "postcss-less": "^6.0.0",
-    "prettier": "^2.7.1",
-    "react-scripts": "5.0.1",
-    "stylelint": "^14.9.1",
-    "stylelint-config-prettier": "^9.0.3",
-    "stylelint-config-standard": "^26.0.0",
-    "typescript": "^4.7.4"
+    "concurrently": "^9.2.1"
   }
 }
