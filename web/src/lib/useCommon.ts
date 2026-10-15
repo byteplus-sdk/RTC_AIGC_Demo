@@ -3,7 +3,7 @@
  * SPDX-license-identifier: BSD-3-Clause
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import VERTC, { MediaType } from '@byteplus/rtc';
 import { Modal } from '@arco-design/web-react';
@@ -62,6 +62,7 @@ export const useJoin = (): [
   const dispatch = useDispatch();
 
   const [joining, setJoining] = useState(false);
+  const joiningRef = useRef(false);
   const listeners = useRtcListeners();
 
   const handleAIGCModeStart = async () => {
@@ -77,103 +78,123 @@ export const useJoin = (): [
   async function disPatchJoin(formValues: FormProps): Promise<boolean | undefined> {
     const { username, roomId } = formValues;
 
-    if (joining) {
-      return;
-    }
-
-    const isSupported = await VERTC.isSupported();
-    if (!isSupported) {
-      Modal.error({
-        title: 'RTC Not Supported',
-        content:
-          'Your browser may not support RTC features. Please try using a different browser or upgrade your browser to try again.',
-      });
-      return;
-    }
-
-    let token = aigcConfig.Token;
-    if (!token) {
-      // Generate token using API
-      // Or you can generate it manually in the console for testing, see README for more information.
-      const res = await openAPIs.GenerateRtcAccessToken({
-        appID: aigcConfig.AppId,
-        roomID: roomId,
-        userID: username,
-      });
-      token = res.token;
-    }
-
-    if (!token) {
-      return;
-    }
-
+    if (joiningRef.current) return;
+    joiningRef.current = true;
     setJoining(true);
-
-    /** 1. Create RTC Engine */
-    await RtcClient.createEngine({
-      appId: aigcConfig.AppId,
-      roomId,
-      uid: username,
-    } as any);
-
-    /** 2 Set events callbacks */
-    RtcClient.addEventListeners(listeners);
-
-    /** 3 Join room */
-
-    await RtcClient.joinRoom(token, username);
-    console.log(' ------ userJoinRoom\n', `roomId: ${roomId}\n`, `uid: ${username}`);
-    /** 4. Get users' devices info */
-    const mediaDevices = await RtcClient.getDevices({
-      audio: true,
-      video: false,
-    });
-
-    if (devicePermissions.audio) {
-      try {
-        await RtcClient.startAudioCapture();
-        // RtcClient.setAudioVolume(30);
-      } catch (e) {
-        logger.debug('No permission for mic');
+    let engineCreated = false;
+    try {
+      const isSupported = await VERTC.isSupported();
+      if (!isSupported) {
+        Modal.error({
+          title: 'RTC Not Supported',
+          content:
+            'Your browser may not support RTC features. Please try using a different browser or upgrade your browser to try again.',
+        });
+        return;
       }
-    }
 
-    dispatch(
-      localJoinRoom({
+      let token = aigcConfig.Token;
+      if (!token) {
+        // Generate token using API
+        // Or you can generate it manually in the console for testing, see README for more information.
+        const res = await openAPIs.GenerateRtcAccessToken({
+          appID: aigcConfig.AppId,
+          roomID: roomId,
+          userID: username,
+        });
+        token = res.token;
+      }
+
+      if (!token)
+        throw new Error('The local service returned no RTC token. Check the RTC configuration.');
+
+      /** 1. Create RTC Engine */
+      await RtcClient.createEngine({
+        appId: aigcConfig.AppId,
         roomId,
-        user: {
-          username,
-          userId: username,
-          publishAudio: true,
-          publishVideo: false,
-        },
-      })
-    );
-    dispatch(
-      updateSelectedDevice({
-        selectedMicrophone: mediaDevices.audioInputs[0]?.deviceId,
-      })
-    );
+        uid: username,
+      } as any);
+      engineCreated = true;
 
-    dispatch(updateMediaInputs(mediaDevices));
+      /** 2 Set events callbacks */
+      RtcClient.addEventListeners(listeners);
 
-    setJoining(false);
+      /** 3 Join room */
 
-    if (devicePermissions.audio) {
-      try {
-        await RtcClient.startAudioCapture();
-      } catch (e) {
-        logger.debug('No permission for mic');
+      await RtcClient.joinRoom(token, username);
+      console.log(' ------ userJoinRoom\n', `roomId: ${roomId}\n`, `uid: ${username}`);
+      /** 4. Get users' devices info */
+      const mediaDevices = await RtcClient.getDevices({
+        audio: true,
+        video: false,
+      });
+
+      if (devicePermissions.audio) {
+        try {
+          await RtcClient.startAudioCapture();
+          // RtcClient.setAudioVolume(30);
+        } catch (e) {
+          logger.debug('No permission for mic');
+        }
       }
+
+      dispatch(
+        localJoinRoom({
+          roomId,
+          user: {
+            username,
+            userId: username,
+            publishAudio: true,
+            publishVideo: false,
+          },
+        })
+      );
+      dispatch(
+        updateSelectedDevice({
+          selectedMicrophone: mediaDevices.audioInputs[0]?.deviceId,
+        })
+      );
+
+      dispatch(updateMediaInputs(mediaDevices));
+
+      if (devicePermissions.audio) {
+        try {
+          await RtcClient.startAudioCapture();
+        } catch (e) {
+          logger.debug('No permission for mic');
+        }
+      }
+
+      Utils.setSessionInfo({
+        username,
+        roomId,
+        publishAudio: true,
+      });
+
+      await handleAIGCModeStart();
+      return true;
+    } catch (error) {
+      if (engineCreated) {
+        await RtcClient.leaveRoom().catch(() => {});
+        dispatch(localLeaveRoom());
+        dispatch(updateAIGCState({ isAIGCEnable: false }));
+        dispatch(clearHistoryMsg());
+      }
+      const proxyHost = process.env.REACT_APP_AIGC_PROXY_HOST || 'http://localhost:3001';
+      Modal.error({
+        title: 'Unable to start conversation',
+        content:
+          error instanceof TypeError && /fetch/i.test(error.message)
+            ? `Unable to connect to the local service at ${proxyHost}. Start the Node server and check its configuration, then try again.`
+            : error instanceof Error
+            ? error.message
+            : 'Check the local service and RTC configuration, then try again.',
+      });
+      return false;
+    } finally {
+      joiningRef.current = false;
+      setJoining(false);
     }
-
-    Utils.setSessionInfo({
-      username,
-      roomId,
-      publishAudio: true,
-    });
-
-    handleAIGCModeStart();
   }
 
   return [joining, disPatchJoin];
@@ -186,8 +207,8 @@ export const useLeave = () => {
     try {
       dispatch(localLeaveRoom());
       dispatch(updateAIGCState({ isAIGCEnable: false }));
-      await Promise.all([RtcClient.stopAudioCapture]);
-      RtcClient.leaveRoom();
+      await RtcClient.stopAudioCapture();
+      await RtcClient.leaveRoom();
       dispatch(clearHistoryMsg());
     } catch (e) {
       logger.debug('leaveRoom error', e);

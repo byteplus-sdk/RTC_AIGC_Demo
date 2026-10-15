@@ -38,7 +38,7 @@ function DeviceDrawerButton(props: IDeviceDrawerButtonProps) {
   const dispatch = useDispatch();
   const deviceList = useMemo(
     () => (type === MediaType.AUDIO ? devices.audioInputs : devices.videoInputs),
-    [devices]
+    [devices, type]
   );
 
   const handleDeviceChange = (value: string) => {

@@ -155,11 +155,17 @@ export class RtcClient {
     );
   };
 
-  leaveRoom = () => {
-    this.stopAgent();
-    this.engine.leaveRoom();
-    VERTC.destroyEngine(this.engine);
-    this.#audioCaptureDevice = undefined;
+  leaveRoom = async () => {
+    try {
+      await this.stopAgent();
+    } finally {
+      try {
+        await this.engine.leaveRoom();
+      } finally {
+        VERTC.destroyEngine(this.engine);
+        this.#audioCaptureDevice = undefined;
+      }
+    }
   };
 
   /**
