@@ -202,16 +202,24 @@ export const useJoin = (): [
 
 export const useLeave = () => {
   const dispatch = useDispatch();
+  const leavingRef = useRef(false);
 
   return async function () {
+    if (leavingRef.current) return;
+    leavingRef.current = true;
     try {
-      dispatch(localLeaveRoom());
-      dispatch(updateAIGCState({ isAIGCEnable: false }));
-      await RtcClient.stopAudioCapture();
-      await RtcClient.leaveRoom();
-      dispatch(clearHistoryMsg());
+      try {
+        await RtcClient.stopAudioCapture();
+      } finally {
+        await RtcClient.leaveRoom();
+      }
     } catch (e) {
       logger.debug('leaveRoom error', e);
+    } finally {
+      dispatch(localLeaveRoom());
+      dispatch(updateAIGCState({ isAIGCEnable: false }));
+      dispatch(clearHistoryMsg());
+      leavingRef.current = false;
     }
   };
 };

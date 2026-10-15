@@ -6,7 +6,8 @@ import BytePlusRTC from '@byteplus/rtc';
 import { Modal } from '@arco-design/web-react';
 import config from '@/config';
 import openAPIs from '@/app/index';
-import { useJoin } from './useCommon';
+import RtcClient from '@/lib/RtcClient';
+import { useJoin, useLeave } from './useCommon';
 
 jest.mock('@byteplus/rtc', () => ({
   __esModule: true,
@@ -15,6 +16,7 @@ jest.mock('@byteplus/rtc', () => ({
   NetworkQuality: { UNKNOWN: 0 },
 }));
 jest.mock('@arco-design/web-react', () => ({ Modal: { error: jest.fn() } }));
+jest.mock('@/utils/logger', () => ({ debug: jest.fn() }));
 jest.mock('@/lib/listenerHooks', () => () => ({}));
 jest.mock('@/lib/RtcClient', () => ({}));
 jest.mock('@/app/index', () => ({ GenerateRtcAccessToken: jest.fn() }));
@@ -93,4 +95,67 @@ test('repeated clicks share the pending join attempt', async () => {
   expect(container.textContent).toBe('Connecting');
   await act(async () => reject(new TypeError('Failed to fetch')));
   expect(container.textContent).toBe('Call now');
+});
+
+function LeaveHarness() {
+  const leave = useLeave();
+  return (
+    <button type="button" onClick={leave}>
+      Leave
+    </button>
+  );
+}
+
+test('audio capture failure still releases the RTC session', async () => {
+  RtcClient.stopAudioCapture = jest.fn().mockRejectedValue(new Error('Capture stopped'));
+  RtcClient.leaveRoom = jest.fn().mockResolvedValue(undefined);
+  const store = configureStore({ reducer: () => ({}) });
+  act(() =>
+    root.render(
+      <Provider store={store}>
+        <LeaveHarness />
+      </Provider>
+    )
+  );
+  await act(async () => container.querySelector('button').click());
+  expect(RtcClient.leaveRoom).toHaveBeenCalledTimes(1);
+});
+
+test('exit waits for cleanup and coalesces repeated clicks', async () => {
+  let finishLeave;
+  RtcClient.stopAudioCapture = jest.fn().mockResolvedValue(undefined);
+  RtcClient.leaveRoom = jest.fn(
+    () =>
+      new Promise((resolve) => {
+        finishLeave = resolve;
+      })
+  );
+  const actions = [];
+  const store = configureStore({
+    reducer: () => ({}),
+    middleware: (defaults) =>
+      defaults().concat(() => (next) => (action) => {
+        actions.push(action);
+        return next(action);
+      }),
+  });
+  act(() =>
+    root.render(
+      <Provider store={store}>
+        <LeaveHarness />
+      </Provider>
+    )
+  );
+  await act(async () => {
+    container.querySelector('button').click();
+    container.querySelector('button').click();
+  });
+  expect(RtcClient.leaveRoom).toHaveBeenCalledTimes(1);
+  expect(actions).toEqual([]);
+  await act(async () => finishLeave());
+  expect(actions.map((action) => action.type)).toEqual([
+    'room/localLeaveRoom',
+    'room/updateAIGCState',
+    'room/clearHistoryMsg',
+  ]);
 });
