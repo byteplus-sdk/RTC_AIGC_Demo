@@ -12,7 +12,7 @@
     "dev:web": "npm --prefix web run dev",
     "build": "npm --prefix web run build",
     "typecheck": "npm --prefix web run typecheck",
-    "test": "npm --prefix web test -- --watchAll=false --passWithNoTests"
+    "test": "npm --prefix server test && npm --prefix web test -- --watchAll=false --passWithNoTests"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"
