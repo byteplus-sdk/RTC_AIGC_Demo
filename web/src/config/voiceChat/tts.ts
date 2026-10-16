@@ -12,6 +12,7 @@ import type { SeedVersion } from './seedVersion';
  * @refer https://console.byteplus.com/voice/service/1000014
  */
 export enum BYTE_PLUS_VOICE_TYPE {
+  Cantonese = 'zh_female_yueyunv_mars_bigtts',
   Luna = 'zh_female_cancan_mars_bigtts',
   Edward = 'zh_male_baqiqingshu_mars_bigtts',
   Emma = 'zh_female_wenroushunv_mars_bigtts',
@@ -122,6 +123,8 @@ export enum OPENAI_VOICE_TYPE {
  * @note Only support Matthew now.
  */
 export enum AMAZON_VOICE_TYPE {
+  ADITI = 'Aditi',
+  TATYANA = 'Tatyana',
   MATTHEW = 'Matthew',
 }
 

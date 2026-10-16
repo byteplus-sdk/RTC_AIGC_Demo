@@ -1,0 +1,130 @@
+.wrapper {
+  position: relative;
+  width: 130px;
+  height: 126px;
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  color: #0c0d0e;
+  font-size: 16px;
+  line-height: 22px;
+  border: 1px solid #e7deff;
+  overflow: hidden;
+
+  .content {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    flex-direction: column;
+    z-index: 1;
+    gap: 8px;
+
+    .icon {
+      margin-top: 16px;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+    }
+
+    .checked-text {
+      vertical-align: baseline;
+      width: 120px;
+      line-height: 24px;
+    }
+  }
+}
+
+.wrapper:hover {
+  box-shadow: 0 5px 6px 0 rgba(82, 102, 133, 15%);
+}
+
+.active {
+  border: 1px solid transparent;
+  background: linear-gradient(0deg, #ffffff, #ffffff) padding-box,
+    linear-gradient(54.42deg, #405fff 11.52%, #c764de 65.03%, #f475a5 86.7%) border-box;
+
+  .checkIcon {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    z-index: 2;
+    width: 20px;
+    height: 20px;
+  }
+
+  .content {
+    .checked-text {
+      background: linear-gradient(90deg, #004fff 38.86%, #9865ff 100%);
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-size: 16px;
+      font-weight: 500;
+    }
+  }
+
+  .tag {
+    background: rgb(134, 123, 227);
+    color: white;
+  }
+}
+
+.active:hover {
+  box-shadow: 0 5px 6px 0 rgba(82, 102, 133, 15%);
+}
+
+.tag {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 18px;
+  background: #8f68ee;
+  color: #fff;
+  padding: 0 6px;
+  border-radius: 0 20px 20px 0;
+}
+body[arco-theme='dark'] {
+  .wrapper {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: rgba(255, 255, 255, 1);
+  }
+
+  .active {
+    border: 1px solid transparent;
+    background-clip: padding-box, border-box;
+    background-origin: padding-box, border-box;
+    background-image: linear-gradient(#1a1a1a, #1a1a1a),
+      linear-gradient(54.42deg, #405fff 11.52%, #c764de 65.03%, #f475a5 86.7%);
+
+    .content {
+      .checked-text {
+        background: none;
+        -webkit-text-fill-color: rgba(255, 255, 255, 1);
+        color: rgba(255, 255, 255, 1);
+      }
+    }
+  }
+}
+
+.wrapper {
+  background-color: transparent;
+  padding: 0;
+  font-family: inherit;
+  flex-shrink: 0;
+}
+.wrapper:focus-visible {
+  outline: 2px solid var(--brand-primary);
+  outline-offset: 2px;
+}
+@media (max-width: 767px) {
+  .wrapper {
+    width: 130px;
+  }
+}

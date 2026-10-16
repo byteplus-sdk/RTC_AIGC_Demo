@@ -218,7 +218,10 @@ export const useLeave = () => {
     leavingRef.current = true;
     try {
       try {
-        await RtcClient.stopAudioCapture();
+        await Promise.allSettled([
+          RtcClient.stopAudioCapture(),
+          RtcClient.engine?.stopScreenCapture(),
+        ]);
       } finally {
         await RtcClient.leaveRoom();
       }

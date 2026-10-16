@@ -4,6 +4,7 @@
  */
 
 import { useDispatch } from 'react-redux';
+import AIChangeCard from '@/components/AIChangeCard';
 import aigcConfig from '@/config';
 import InvokeButton from '@/pages/MainPage/MainArea/Antechamber/InvokeButton';
 import { useJoin } from '@/lib/useCommon';
@@ -15,11 +16,10 @@ function Antechamber() {
   const [joining, dispatchJoin] = useJoin();
   const username = aigcConfig.config.UserId;
   const roomId = aigcConfig.config.RoomId;
-  const isAvatarScene = aigcConfig.AvatarEnable;
 
   const handleJoinRoom = () => {
     if (!joining) {
-      dispatch(updateFullScreen({ isFullScreen: !isAvatarScene })); // 初始化
+      dispatch(updateFullScreen({ isFullScreen: false })); // 初始化
       dispatchJoin(
         {
           username,
@@ -33,10 +33,7 @@ function Antechamber() {
 
   return (
     <div className={style.wrapper}>
-      <div className={style.title}>Welcome to the</div>
-      <div className={style.description}>
-        Conversational AI Real-time Interaction Experience Hall
-      </div>
+      <AIChangeCard />
       <InvokeButton onClick={handleJoinRoom} loading={joining} className={style['invoke-btn']} />
     </div>
   );

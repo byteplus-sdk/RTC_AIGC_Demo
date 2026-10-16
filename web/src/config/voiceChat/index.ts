@@ -16,6 +16,8 @@ import { ModuleType, Provider } from '../basic';
  * @note For more information, you can refer to https://docs.byteplus.com/en/docs/byteplus-rtc/docs-1316243
  */
 export class VoiceChatManager {
+  interruptMode = true;
+
   llm: LLMManager;
 
   asr: ASRManager;
@@ -76,6 +78,7 @@ export class VoiceChatManager {
     const ttsConfig = this.tts.value;
     return {
       Config: {
+        InterruptMode: this.interruptMode ? 0 : 1,
         LLMConfig: llmConfig,
         ASRConfig: this.asr.value,
         TTSConfig: ttsConfig,

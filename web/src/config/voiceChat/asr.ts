@@ -12,6 +12,8 @@ import type { SeedVersion } from './seedVersion';
  *       Some sensitive fields not provided in frontend were injected by the server (See: Server/sensitive.js).
  */
 export class ASRManager {
+  language = 'en-US';
+
   provider: Provider.Amazon | Provider.Byteplus | Provider.GoogleAsrV1 | Provider.GoogleAsrV2;
 
   /** Seed ASR 1.0 vs 2.0 (default 2.0). */
@@ -40,7 +42,7 @@ export class ASRManager {
         /**
          * @refer https://docs.aws.amazon.com/transcribe/latest/dg/supported-languages.html
          */
-        Language: 'zh-CN' | 'en-US';
+        Language: string;
       };
     };
     [Provider.Byteplus]: {
@@ -178,6 +180,11 @@ export class ASRManager {
   }
 
   get value() {
+    this.#paramsMap[Provider.Amazon].ProviderParams.Language =
+      this.language === 'yue-Hant-HK' ? 'zh-HK' : this.language;
+    this.#paramsMap[Provider.GoogleAsrV1].ProviderParams.Language = this.language;
+    this.#paramsMap[Provider.GoogleAsrV2].ProviderParams.LanguageCodes = [this.language];
+
     switch (this.provider) {
       case Provider.Byteplus: {
         const bp = this.#paramsMap[this.provider].ProviderParams;

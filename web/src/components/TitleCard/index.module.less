@@ -1,50 +1,67 @@
-/**
- * Copyright 2025 Beijing Volcano Engine Technology Co., Ltd. All Rights Reserved.
- * SPDX-license-identifier: BSD-3-Clause
- */
-
 .wrapper {
-    width: 100%;
-    box-sizing: border-box;
-    height: max-content;
+  width: 100%;
+  box-sizing: border-box;
+  height: max-content;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  min-height: 75px;
+  padding: 20px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(229, 238, 255, 1);
+  backdrop-filter: blur(28px);
+  box-shadow: 0px 0px 16px 0px 0px 4px 4px 0px rgba(255, 255, 255, 0.15) inset;
+  backdrop-filter: blur(28px);
+  background-color: rgb(247, 248, 252);
+
+  &.mini {
+    width: calc(50% - 12px);
+  }
+
+  .title {
+    position: absolute;
+    font-size: 12px;
+    left: 10px;
+    top: 0px;
+    transform: translateY(-50%);
+    padding: 0px 6px;
+    z-index: 1;
+    color: var(--text-color-text-3, rgba(115, 122, 135, 1));
+    background-color: white;
+    width: max-content;
     display: flex;
     flex-direction: row;
+    justify-content: center;
     align-items: center;
-    min-height: 75px;
-    padding: 20px 16px;
-    border-radius: 8px;
-    border: 1px solid rgba(229, 238, 255, 1);
-    backdrop-filter: blur(28px);
-    box-shadow: 0px 0px 16px 0px 0px 4px 4px 0px rgba(255, 255, 255, 0.15) inset;
-    backdrop-filter: blur(28px);
+
+    .required {
+      height: max-content;
+      width: max-content;
+      color: red;
+      margin-right: 6px;
+      padding-top: 4.5px;
+      font-size: 14px;
+    }
+  }
+
+  div {
+    width: 100%;
+  }
+}
+body[arco-theme='dark'] {
+  .wrapper {
+    background-color: rgba(21, 21, 22, 1);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: none;
 
     .title {
-        position: absolute;
-        font-size: 12px;
-        left: 10px;
-        top: 0px;
-        transform: translateY(-50%);
-        padding: 0px 6px;
-        z-index: 1;
-        color: var(--text-color-text-3, rgba(115, 122, 135, 1));
-        background-color: white;
-        width: max-content;
-        display: flex;
-        flex-direction: row;
-        justify-content: center;
-        align-items: center;
-
-        .required {
-            height: max-content;
-            width: max-content;
-            color: red;
-            margin-right: 6px;
-            padding-top: 4.5px;
-            font-size: 14px;
-        }
+      color: rgba(255, 255, 255, 0.6);
+      background-color: rgba(21, 21, 22, 1);
     }
-
-    div {
-        width: 100%;
-    }
+  }
+}
+@media (max-width: 600px) {
+  .wrapper.mini {
+    width: 100%;
+  }
 }
