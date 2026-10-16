@@ -80,6 +80,14 @@ export const requestPostMethod = (
  */
 export const resultHandler = (res: RequestResponse) => {
   const { Result, ResponseMetadata } = res || {};
+  if (ResponseMetadata?.Error) {
+    const { Code, Message: detail } = ResponseMetadata.Error;
+    const message = `[${ResponseMetadata.Action || 'Request'}] ${Code}: ${
+      detail || 'Request failed'
+    }`;
+    Message.error(message);
+    throw new Error(message);
+  }
   if (Result === 'ok' || typeof Result !== 'string') {
     return Result;
   }

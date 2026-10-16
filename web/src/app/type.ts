@@ -14,6 +14,7 @@ export interface RequestResponse {
     RequestId: string;
     Error: {
       Code: string;
+      Message?: string;
     };
   }>;
   Result: any;
