@@ -35,15 +35,13 @@
   }
 }
 
-
-
 .wrapper {
   width: 43%;
   height: 88px;
   padding: 3px 16px 3px 16px;
   border-radius: 12px;
   border: 1px solid;
-  
+
   border-color: rgba(22, 100, 255, 0.3);
   display: flex;
   flex-direction: row;
@@ -95,4 +93,23 @@
     bottom: 0px;
     right: 0px;
   }
+}
+.wrapper {
+  width: 100%;
+  min-height: 88px;
+  height: auto;
+  padding: 12px;
+  box-sizing: border-box;
+  text-align: left;
+}
+.noStyle .content,
+.wrapper .content {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.noStyle .icon,
+.wrapper .icon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
 }

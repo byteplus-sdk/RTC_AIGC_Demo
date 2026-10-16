@@ -2,6 +2,7 @@
  * Copyright 2025 Beijing Volcano Engine Technology Co., Ltd. All Rights Reserved.
  * SPDX-license-identifier: BSD-3-Clause
  */
+import { StreamIndex } from '@byteplus/rtc';
 import { v4 as uuid } from 'uuid';
 import { isRealTimeCallMode } from '@/app/base';
 import { PROMPT } from '.';
@@ -43,6 +44,8 @@ export class ConfigFactory {
    *       Or leave it undefined, demo will generate it automatically by calling api (in src/lib/useCommon.ts), and this require your RTC_APP_KEY in /Server/sensitve.js.
    */
   Token = undefined;
+
+  VisionEnable = false;
 
   BotName = 'RobotMan_';
 
@@ -215,6 +218,22 @@ export class ConfigFactory {
     return isRealTimeCallMode() ? [] : this.#voiceChatManager.mcp.customMcpList;
   }
 
+  set AsrLanguage(value: string) {
+    this.#voiceChatManager.asr.language = value;
+  }
+
+  get AsrLanguage() {
+    return this.#voiceChatManager.asr.language;
+  }
+
+  set interruptMode(value: boolean) {
+    this.#voiceChatManager.interruptMode = value;
+  }
+
+  get interruptMode() {
+    return this.#voiceChatManager.interruptMode;
+  }
+
   get AvatarEnable() {
     return isRealTimeCallMode()
       ? this.#realTimeManager.avatar.provider !== Provider.None
@@ -246,6 +265,22 @@ export class ConfigFactory {
       },
       ...this.#manager.config,
     };
+    if ('Config' in params) {
+      Object.assign(params.Config.LLMConfig, {
+        VisionConfig: {
+          Enable:
+            this.VisionEnable &&
+            !this.LLMWebSearchEnabled &&
+            !this.CustomMcpList.some((item) => item.URL?.trim()),
+          SnapshotConfig: {
+            StreamType: StreamIndex.STREAM_INDEX_SCREEN,
+            Height: 480,
+            Interval: 1000,
+            ImagesLimit: 1,
+          },
+        },
+      });
+    }
     return params;
   }
 }

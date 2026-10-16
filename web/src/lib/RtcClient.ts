@@ -24,6 +24,7 @@ import RTCAIAnsExtension from '@byteplus/rtc/extension-ainr';
 import openAPIs from '@/app/index';
 import aigc from '@/config';
 import Utils from '@/utils/utils';
+import store from '@/store';
 import { COMMAND, INTERRUPT_PRIORITY } from '@/utils/handler';
 
 export interface IEventListener {
@@ -74,6 +75,8 @@ export class RtcClient {
 
   #videoCaptureDevice?: string;
 
+  ainrExtension?: RTCAIAnsExtension;
+
   audioBotEnabled = false;
 
   audioBotStartTime = 0;
@@ -90,9 +93,9 @@ export class RtcClient {
 
     this.engine = BytePlusRTC.createEngine(this.config.appId);
     try {
-      const AIAnsExtension = new RTCAIAnsExtension();
-      await this.engine.registerExtension(AIAnsExtension);
-      AIAnsExtension.enable();
+      this.ainrExtension = new RTCAIAnsExtension();
+      await this.engine.registerExtension(this.ainrExtension);
+      await this.updateAINR(store.getState().room.isAINREnable);
     } catch (error) {
       console.error((error as any).message);
     }
@@ -170,7 +173,10 @@ export class RtcClient {
         await engine.leaveRoom();
       } finally {
         BytePlusRTC.destroyEngine(engine);
-        if (this.engine === engine) this.#audioCaptureDevice = undefined;
+        if (this.engine === engine) {
+          this.ainrExtension = undefined;
+          this.#audioCaptureDevice = undefined;
+        }
       }
     }
   };
@@ -245,6 +251,12 @@ export class RtcClient {
       videoInputs,
     };
   }
+
+  updateAINR = async (enable: boolean) => {
+    if (!this.ainrExtension) return;
+    if (enable) await this.ainrExtension.enable();
+    else await this.ainrExtension.disable();
+  };
 
   startVideoCapture = async (camera?: string) => {
     await this.engine.startVideoCapture(camera || this.#videoCaptureDevice);

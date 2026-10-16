@@ -11,14 +11,28 @@ import utils from '@/utils/utils';
 import FullScreenCard from '@/components/FullScreenCard';
 import { RootState } from '@/store';
 import Config from '@/config';
+import AIAvatarCard from '@/components/AIAvatarCard';
+import UserTag from '@/components/UserTag';
+import { Name } from '@/config/scene';
 import style from './index.module.less';
 
 function Room() {
-  const isFullScreen = useSelector((state: RootState) => state.room.isFullScreen);
+  const { isFullScreen, isShowSubtitle, scene } = useSelector((state: RootState) => state.room);
   const isAvatarScene = Config.AvatarEnable;
   return (
     <div className={`${style.wrapper} ${utils.isMobile() ? style.mobile : ''}`}>
-      {isFullScreen || isAvatarScene ? <FullScreenCard /> : ''}
+      {isShowSubtitle && !utils.isMobile() && (
+        <UserTag name={Name[scene]} className={style.subTitleUserTag} />
+      )}
+      {isFullScreen || isAvatarScene ? (
+        <FullScreenCard />
+      ) : (
+        <AIAvatarCard
+          showUserTag={!isShowSubtitle}
+          showStatus={!isShowSubtitle}
+          className={isShowSubtitle ? style.subtitleAiAvatar : ''}
+        />
+      )}
       <Conversation className={style.conversation} />
       <ToolBar className={style.toolBar} />
       <AudioController className={style.controller} />

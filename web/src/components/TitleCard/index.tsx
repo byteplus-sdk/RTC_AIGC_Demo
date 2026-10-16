@@ -1,20 +1,20 @@
-/**
- * Copyright 2025 Beijing Volcano Engine Technology Co., Ltd. All Rights Reserved.
- * SPDX-license-identifier: BSD-3-Clause
- */
-
 import styles from './index.module.less';
 
 interface ITitleCardProps extends React.HTMLAttributes<HTMLDivElement> {
   title: string;
   required?: boolean;
+  titleClassName?: string;
+  size?: 'default' | 'mini';
 }
 
 function TitleCard(props: ITitleCardProps) {
-  const { required, title, children, className, ...rest } = props;
+  const { required, title, children, className, titleClassName, size = 'default', ...rest } = props;
   return (
-    <div className={`${styles.wrapper} ${className}`} {...rest}>
-      <div className={styles.title}>
+    <div
+      className={`${styles.wrapper} ${size === 'mini' ? styles.mini : ''} ${className}`}
+      {...rest}
+    >
+      <div className={`${styles.title} ${titleClassName}`}>
         {required ? <div className={styles.required}>* </div> : ''}
         {title}
       </div>
