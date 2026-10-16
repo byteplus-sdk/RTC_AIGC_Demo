@@ -7,115 +7,28 @@ Demo Online: https://demo.byteplus.com/rtc/solution/aigc
 - Users only need to call the standard - based OpenAPI interfaces to configure the required ASR, LLM, and TTS types and parameters. The Volcengine cloud computing service is responsible for edge user access, cloud resource scheduling, audio and video stream compression, text - to - voice conversion processing, and data subscription and transmission. This simplifies the development process, allowing developers to focus more on the training and debugging of the core capabilities of large models, thus rapidly promoting the innovation of AIGC product applications.
 - At the same time, Volcengine RTC has mature technologies such as audio 3A processing and video processing, as well as large - scale audio and video chat capabilities. It can enable AIGC products to more conveniently support scenarios such as multimodal interaction and multi - person interaction, maintaining the naturalness and efficiency of interaction.
 
-## Configuration Overview
+## Setup and Configuration
 
-Fill credentials in the root `.env.local`, which is excluded from Git.
-The [.env.example](.env.example) template lists all supported fields.
-
-### 🔧 Flexible Mode (VoiceChat Mode)
-
-Fill the fields for the providers selected in the UI. Provider, voice, prompt and
-recognition language can be changed in the settings panel.
-
-```text
-Flexible
-├── ASR (Speech Recognition)
-│   ├── Amazon
-│   │   ├── AWS_ACCESS_KEY_ID                (Access Key ID)
-│   │   └── AWS_SECRET_ACCESS_KEY            (Secret Access Key)
-│   ├── Google
-│   │   ├── GOOGLE_CREDENTIALS_JSON         (Service account JSON)
-│   │   └── GOOGLE_RECOGNIZER_PATH          (Required for ASR v2)
-│   └── BytePlus
-│       ├── BYTEPLUS_SEED_SPEECH_APP_ID       (Speech application ID)
-│       └── BYTEPLUS_SEED_SPEECH_ACCESS_TOKEN (Speech AccessToken)
-├── TTS (Text-to-Speech)
-│   ├── BytePlus
-│   │   ├── BYTEPLUS_SEED_SPEECH_APP_ID
-│   │   └── BYTEPLUS_SEED_SPEECH_ACCESS_TOKEN
-│   ├── Amazon
-│   │   ├── AWS_ACCESS_KEY_ID
-│   │   └── AWS_SECRET_ACCESS_KEY
-│   ├── OpenAI
-│   │   ├── OPENAI_API_KEY                   (OpenAI API key)
-│   │   └── OPENAI_TTS_URL                   (Optional speech endpoint)
-│   └── Google
-│       └── GOOGLE_CREDENTIALS_JSON
-├── LLM (Large Language Model)
-│   ├── Custom LLM (OpenAI compatible)
-│   │   └── CUSTOM_LLM_API_KEY               (Falls back to OPENAI_API_KEY)
-│   └── BytePlus ModelArk
-│       ├── BYTEPLUS_MODEL_ENDPOINT_ID       (Model endpoint ID)
-│       └── BYTEPLUS_MODEL_API_KEY           (ModelArk API key)
-├── Web search (optional)
-│   └── ASKECHO_API_KEY
-└── Avatar (optional)
-    ├── Volcano
-    │   ├── AVATAR_APP_ID
-    │   └── AVATAR_TOKEN
-    └── Akool
-        └── AKOOL_API_KEY
-```
-
-Get the model endpoint ID and API key from the
-[ModelArk console](https://console.byteplus.com/ark/region:ark+ap-southeast-1/endpoint).
-The BytePlus speech application must have the selected ASR and TTS services enabled.
-Wrap `GOOGLE_CREDENTIALS_JSON` in single quotes in `.env.local`.
-
-### ⚡ Realtime Mode
-
-```text
-Realtime
-├── OpenAI
-│   └── OPENAI_API_KEY            (OpenAI API key)
-└── Avatar (optional)
-    └── Volcano
-        ├── AVATAR_APP_ID         (Avatar application ID)
-        └── AVATAR_TOKEN          (Avatar token)
-```
-
-## Project Structure
-
-```text
-.
-├── server/          Koa API server
-├── web/             React application
-└── package.json     Development and build commands
-```
-
-## Environment Preparation
-
-Requires Node.js 18 or later.
-
-Install dependencies and create the configuration file in the repository root:
+Requires Node.js 18 or later. Run in the repository root:
 
 ```shell
 npm run setup
 cp .env.example .env.local
 ```
 
-Fill in the common RTC fields and the provider fields for your selected mode.
+Fill in `.env.local` following the comments in [.env.example](.env.example):
 
-**Common RTC configuration**
+- **Both modes:** `RTC_APP_ID`, `RTC_APP_KEY`, `BYTEPLUS_ACCESS_KEY_ID`, `BYTEPLUS_SECRET_ACCESS_KEY`.
+- **Realtime:** add `OPENAI_API_KEY`.
+- **Flexible:** choose ASR, LLM and TTS providers in the UI, then fill their credential groups. Custom LLM uses `CUSTOM_LLM_API_KEY`, falling back to `OPENAI_API_KEY`.
+- **Optional features:** fill search or avatar credentials when enabled.
+- **Local settings:** `PORT=3000`, `SERVER_PORT=3001`; an empty `REACT_APP_AIGC_PROXY_HOST` uses the development proxy.
 
-Required for both modes. Get the application credentials from the
-[RTC console](https://console.byteplus.com/rtc/listRTC) and the access keys from
-[IAM key management](https://console.byteplus.com/iam/keymanage).
-
-```text
-RTC
-├── RTC_APP_ID                    (RTC application ID)
-├── RTC_APP_KEY                   (RTC application key for room tokens)
-└── OpenAPI authentication
-    ├── BYTEPLUS_ACCESS_KEY_ID    (Access Key ID with RTC API permissions)
-    └── BYTEPLUS_SECRET_ACCESS_KEY (Secret Access Key)
-```
-
-**Optional settings**
-
-`PORT` and `SERVER_PORT` default to `3000` and `3001`.
-Set `REACT_APP_AIGC_PROXY_HOST` when using another API server;
-leave it empty to use the development proxy.
+Get credentials from the [RTC console](https://console.byteplus.com/rtc/listRTC),
+[IAM key management](https://console.byteplus.com/iam/keymanage) and
+[ModelArk console](https://console.byteplus.com/ark/region:ark+ap-southeast-1/endpoint).
+Enable the selected ASR/TTS services for your BytePlus speech application.
+`.env.local` is excluded from Git.
 
 ## Quick Start
 
@@ -143,8 +56,10 @@ npm run build
 ```
 
 The production web output is written to `web/build/`.
-For production builds, provide `REACT_APP_RTC_APP_ID`, `REACT_APP_MODEL_ENDPOINT_ID`
-and `REACT_APP_AIGC_PROXY_HOST` in the build environment.
+For production builds, set `REACT_APP_AIGC_PROXY_HOST` to the API server URL.
+`REACT_APP_RTC_APP_ID` takes precedence when set; otherwise the browser reads
+`RTC_APP_ID` from the API server on first join. Reload the page after changing it.
+For Flexible mode with ModelArk, also set `REACT_APP_MODEL_ENDPOINT_ID` at build time.
 
 ### FAQ
 | Issue | Solution |
