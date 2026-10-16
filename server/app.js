@@ -8,6 +8,9 @@ const bodyParser = require('koa-bodyparser');
 const cors = require('koa2-cors');
 const { Signer } = require('@byteplus/vcloud-sdk-nodejs');
 const fetch = require('node-fetch');
+if (require.main === module) {
+  require('dotenv').config({ path: require('path').resolve(__dirname, '../.env.local') });
+}
 const { ACCOUNT_INFO, RTC_APP_KEY, injectSensitiveInfo } = require('./sensitive');
 const { isVoiceChatMode, generateRtcAccessToken } = require('./util');
 

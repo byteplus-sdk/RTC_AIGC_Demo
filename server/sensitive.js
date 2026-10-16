@@ -53,23 +53,23 @@ const ACCOUNT_INFO = {
   /**
    * @note Required, get from https://console.byteplus.com/iam/keymanage
    */
-  accessKeyId: 'Your Access Key ID',
+  accessKeyId: process.env.BYTEPLUS_ACCESS_KEY_ID || 'Your Access Key ID',
   /**
    * @note Required, get from https://console.byteplus.com/iam/keymanage
    */
-  secretKey: 'Your Secret Key',
+  secretKey: process.env.BYTEPLUS_SECRET_ACCESS_KEY || 'Your Secret Key',
 };
 
 /**
  * @brief RTC AppKey
  * @refer https://console.byteplus.com/rtc/listRTC
  */
-const RTC_APP_KEY = 'Your RTC App Key';
+const RTC_APP_KEY = process.env.RTC_APP_KEY || 'Your RTC App Key';
 
 /**
  * @brief AskEcho Search Agent API key (injected into `WebSearchAgentConfig.APIKey` when enabled).
  */
-const AskEchoSearchAgentAPIKey = 'Your AskEcho API Key';
+const AskEchoSearchAgentAPIKey = process.env.ASKECHO_API_KEY || 'Your AskEcho API Key';
 
 /**
  * @brief Sensitive fields in Flexible Mode (VoiceChat Mode).
@@ -82,39 +82,39 @@ const VOICE_CHAT_MODE = {
          * @note Amazon Access key ID. For detail, see Create new access keys for an IAM user.
          * @refer https://docs.aws.amazon.com/keyspaces/latest/devguide/create.keypair.html
          */
-        ID: 'Your ID',
+        ID: process.env.AWS_ACCESS_KEY_ID || 'Your ID',
         /**
          * @note Amazon Secret access key. For detail, see Create new access keys for an IAM user.
          * @refer https://docs.aws.amazon.com/keyspaces/latest/devguide/create.keypair.html
          */
-        Secret: 'Your Secret',
+        Secret: process.env.AWS_SECRET_ACCESS_KEY || 'Your Secret',
       },
       google: {
         /**
          * @refer https://cloud.google.com/docs/authentication/application-default-credentials#GAC
          */
-        CredentialsJSON: 'Your Credentials JSON',
+        CredentialsJSON: process.env.GOOGLE_CREDENTIALS_JSON || 'Your Credentials JSON',
       },
       /** Google Cloud Speech-to-Text v1 (`ASRConfig.Provider` = `Google`). */
       Google: {
-        CredentialsJSON: 'Your Credentials JSON',
+        CredentialsJSON: process.env.GOOGLE_CREDENTIALS_JSON || 'Your Credentials JSON',
       },
       /** Google Cloud Speech-to-Text v2 (`ASRConfig.Provider` = `GoogleV2`). */
       GoogleV2: {
-        CredentialsJSON: 'Your Credentials JSON',
-        RecognizerPath: 'Your Recognizer Path',
+        CredentialsJSON: process.env.GOOGLE_CREDENTIALS_JSON || 'Your Credentials JSON',
+        RecognizerPath: process.env.GOOGLE_RECOGNIZER_PATH || 'Your Recognizer Path',
       },
       BytePlus: {
         /**
          * @note The AppId obtained on BytePlus ASR Console, used to identify the application.
          * @refer https://console.byteplus.com/voice/service/1000017
          */
-        AppId: 'Your AppId',
+        AppId: process.env.BYTEPLUS_SEED_SPEECH_APP_ID || 'Your AppId',
         /**
          * @brief AccessToken obtained on BytePlus ASR Console, used for authentication.
          * @refer https://console.byteplus.com/voice/service/1000017
          */
-        AccessToken: 'Your AccessToken',
+        AccessToken: process.env.BYTEPLUS_SEED_SPEECH_ACCESS_TOKEN || 'Your AccessToken',
         /**
          * @note ApiResourceId is set by the frontend (Seed ASR 1.0 / 2.0).
          */
@@ -129,12 +129,12 @@ const VOICE_CHAT_MODE = {
            * @note App ID obtained on BytePlus Text-to-Speech Console, used to identify the application.
            * @refer https://console.byteplus.com/voice/service/1000014?
            */
-          appid: 'Your App ID',
+          appid: process.env.BYTEPLUS_SEED_SPEECH_APP_ID || 'Your App ID',
           /**
            * @note The Access Token corresponding to the App ID of Text-to-Speech service, used for identity authentication. You can obtain it by on BytePlus Text-to-Speech Console.
            * @refer https://console.byteplus.com/voice/service/1000014?
            */
-          token: 'Your Access Token',
+          token: process.env.BYTEPLUS_SEED_SPEECH_ACCESS_TOKEN || 'Your Access Token',
         },
       },
       amazon: {
@@ -142,31 +142,31 @@ const VOICE_CHAT_MODE = {
          * @note Amazon Access key ID. For detail, see Create new access keys for an IAM user.
          * @refer https://docs.aws.amazon.com/keyspaces/latest/devguide/create.keypair.html
          */
-        ID: 'Your ID',
+        ID: process.env.AWS_ACCESS_KEY_ID || 'Your ID',
         /**
          * @note Amazon Secret access key. For detail, see Create new access keys for an IAM user.
          * @refer https://docs.aws.amazon.com/keyspaces/latest/devguide/create.keypair.html
          */
-        Secret: 'Your Secret',
+        Secret: process.env.AWS_SECRET_ACCESS_KEY || 'Your Secret',
       },
       openai: {
         /**
          * @note Fixed to the value: https://api.openai.com/v1/audio/speech
          * @example https://api.openai.com/v1/audio/speech
          */
-        URL: 'Your OpenAI URL',
+        URL: process.env.OPENAI_TTS_URL || 'https://api.openai.com/v1/audio/speech',
         /**
          * @note APIKey. Acquire on api-keys.
          * @refer https://platform.openai.com/api-keys
          */
-        APIKey: 'Your OpenAI API Key',
+        APIKey: process.env.OPENAI_API_KEY || 'Your OpenAI API Key',
       },
       /** Google Cloud Text-to-Speech (`TTSConfig.Provider` = `Google`, rtc-aigc-demo shape). */
       Google: {
         /**
          * @refer https://cloud.google.com/docs/authentication/application-default-credentials#GAC
          */
-        CredentialsJSON: 'Your Credentials JSON',
+        CredentialsJSON: process.env.GOOGLE_CREDENTIALS_JSON || 'Your Credentials JSON',
       },
     },
   },
@@ -175,23 +175,23 @@ const VOICE_CHAT_MODE = {
       /**
        * @brief APIKey, acquire on https://platform.openai.com/api-keys
        */
-      APIKey: 'Your API Key',
+      APIKey: process.env.CUSTOM_LLM_API_KEY || process.env.OPENAI_API_KEY || 'Your API Key',
     },
     BytePlusArk: {
       /**
        * @note APIKey. Acquire on View API Key.
        * @refer https://console.byteplus.com/ark/region:ark+ap-southeast-1/endpoint?config=%7B%7D
        */
-      APIKey: 'Your API Key',
+      APIKey: process.env.BYTEPLUS_MODEL_API_KEY || 'Your API Key',
     },
   },
   AvatarConfig: {
     [AVATAR_PROVIDER.VOLCANO]: {
-      AvatarAppID: 'Your Avatar App ID',
-      AvatarToken: 'Your Avatar Token',
+      AvatarAppID: process.env.AVATAR_APP_ID || 'Your Avatar App ID',
+      AvatarToken: process.env.AVATAR_TOKEN || 'Your Avatar Token',
     },
     [AVATAR_PROVIDER.AKOOL]: {
-      ApiKey: 'Your Akool API Key',
+      ApiKey: process.env.AKOOL_API_KEY || 'Your Akool API Key',
     },
   },
   // SubtitleConfig: {
@@ -213,12 +213,12 @@ const REALTIME_API_MODE = {
      * @brief API key of OpenAI.
      * @refer https://platform.openai.com/api-keys
      */
-    Token: 'Your OpenAI Token',
+    Token: process.env.OPENAI_API_KEY || 'Your OpenAI Token',
   },
   AvatarConfig: {
     [AVATAR_PROVIDER.VOLCANO]: {
-      AvatarAppID: 'Your Realtime Avatar App ID',
-      AvatarToken: 'Your Realtime Avatar Token',
+      AvatarAppID: process.env.AVATAR_APP_ID || 'Your Realtime Avatar App ID',
+      AvatarToken: process.env.AVATAR_TOKEN || 'Your Realtime Avatar Token',
     },
   },
 };

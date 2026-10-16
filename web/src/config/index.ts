@@ -126,5 +126,8 @@ export const Questions = [
 ];
 
 const factory = new ConfigFactory();
+if (process.env.REACT_APP_RTC_APP_ID) factory.AppId = process.env.REACT_APP_RTC_APP_ID;
+if (process.env.REACT_APP_MODEL_ENDPOINT_ID)
+  factory.endPointId = process.env.REACT_APP_MODEL_ENDPOINT_ID;
 
 export default factory;

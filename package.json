@@ -6,13 +6,13 @@
   "scripts": {
     "setup": "npm install && npm --prefix server install && npm --prefix web install --legacy-peer-deps",
     "dev": "npm run dev:realtime",
-    "dev:realtime": "concurrently -k -n server,web \"npm run dev:server\" \"npm --prefix web run dev:realtime\"",
-    "dev:flexible": "concurrently -k -n server,web \"npm run dev:server\" \"npm --prefix web run dev:flexible\"",
+    "dev:realtime": "node scripts/dev.cjs realtime",
+    "dev:flexible": "node scripts/dev.cjs flexible",
     "dev:server": "npm --prefix server run dev",
-    "dev:web": "npm --prefix web run dev",
+    "dev:web": "node scripts/dev.cjs web",
     "build": "npm --prefix web run build",
     "typecheck": "npm --prefix web run typecheck",
-    "test": "npm --prefix server test && npm --prefix web test -- --watchAll=false --passWithNoTests"
+    "test": "node --test scripts/*.test.cjs && npm --prefix server test && npm --prefix web test -- --watchAll=false --passWithNoTests"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"
