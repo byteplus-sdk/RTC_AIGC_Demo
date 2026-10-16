@@ -25,6 +25,7 @@ let root;
 let container;
 let previousAppId;
 let previousGenerateToken;
+let previousFetch;
 function Harness() {
   const [joining, join] = useJoin();
   return (
@@ -41,6 +42,10 @@ beforeEach(() => {
   previousAppId = config.AppId;
   previousGenerateToken = openAPIs.GenerateRtcAccessToken;
   config.AppId = 'Your AppId';
+  previousFetch = global.fetch;
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true, json: async () => ({ Result: { appId: 'test-app' } }),
+  });
   Modal.error.mockClear();
   BytePlusRTC.isSupported.mockResolvedValue(true);
   container = document.createElement('div');
@@ -62,6 +67,7 @@ beforeEach(() => {
 afterEach(() => {
   act(() => root.unmount());
   config.AppId = previousAppId;
+  global.fetch = previousFetch;
   openAPIs.GenerateRtcAccessToken = previousGenerateToken;
 });
 
@@ -158,4 +164,40 @@ test('exit waits for cleanup and coalesces repeated clicks', async () => {
     'room/updateAIGCState',
     'room/clearHistoryMsg',
   ]);
+});
+
+
+test('runtime AppId is loaded before token issuance', async () => {
+  openAPIs.GenerateRtcAccessToken = jest.fn().mockRejectedValue(new Error('token unavailable'));
+  await act(async () => container.querySelector('button').click());
+  expect(global.fetch).toHaveBeenCalledWith(expect.stringMatching(/\/runtimeConfig$/));
+  expect(openAPIs.GenerateRtcAccessToken).toHaveBeenCalledWith({
+    appID: 'test-app', roomID: 'room', userID: 'user',
+  });
+});
+
+test('configured AppId takes precedence over runtime configuration', async () => {
+  config.AppId = 'configured-app';
+  openAPIs.GenerateRtcAccessToken = jest.fn().mockRejectedValue(new Error('token unavailable'));
+  await act(async () => container.querySelector('button').click());
+  expect(global.fetch).not.toHaveBeenCalled();
+  expect(openAPIs.GenerateRtcAccessToken).toHaveBeenCalledWith(expect.objectContaining({ appID: 'configured-app' }));
+});
+
+test('runtime configuration failure allows retry before token issuance', async () => {
+  global.fetch.mockRejectedValue(new TypeError('Failed to fetch'));
+  openAPIs.GenerateRtcAccessToken = jest.fn();
+  await act(async () => container.querySelector('button').click());
+  expect(container.textContent).toBe('Call now');
+  expect(openAPIs.GenerateRtcAccessToken).not.toHaveBeenCalled();
+  await act(async () => container.querySelector('button').click());
+  expect(global.fetch).toHaveBeenCalledTimes(2);
+});
+
+test.each([{}, { appId: 123 }, { appId: ' ' }])('invalid runtime AppId is rejected: %p', async (result) => {
+  global.fetch.mockResolvedValue({ ok: true, json: async () => ({ Result: result }) });
+  openAPIs.GenerateRtcAccessToken = jest.fn();
+  await act(async () => container.querySelector('button').click());
+  expect(openAPIs.GenerateRtcAccessToken).not.toHaveBeenCalled();
+  expect(container.textContent).toBe('Call now');
 });

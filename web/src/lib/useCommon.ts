@@ -27,7 +27,7 @@ import {
   setDevicePermissions,
 } from '@/store/slices/device';
 import logger from '@/utils/logger';
-import aigcConfig from '@/config';
+import aigcConfig, { AIGC_PROXY_HOST } from '@/config';
 
 export interface FormProps {
   username: string;
@@ -93,6 +93,15 @@ export const useJoin = (): [
         return;
       }
 
+      if (!aigcConfig.AppId || aigcConfig.AppId === 'Your AppId') {
+        const response = await fetch(`${AIGC_PROXY_HOST}/runtimeConfig`);
+        const runtime = await response.json();
+        const appId = runtime?.Result?.appId;
+        if (!response.ok || typeof appId !== 'string' || !appId.trim()) {
+          throw new Error('The local service returned no RTC AppId. Check RTC_APP_ID.');
+        }
+        aigcConfig.AppId = appId;
+      }
       let token = aigcConfig.Token;
       if (!token) {
         // Generate token using API

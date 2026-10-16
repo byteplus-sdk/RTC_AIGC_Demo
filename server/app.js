@@ -98,6 +98,11 @@ function createApp({ fetchImpl = fetch, env = process.env } = {}) {
   app.use(bodyParser());
 
   app.use(async (ctx) => {
+    if (ctx.method === 'GET' && ctx.path === '/runtimeConfig') {
+      ctx.body = { Result: { appId: config.appId } };
+      return;
+    }
+
     /**
      * @brief Proxy OpenAPI requests for AIGC.
      */

@@ -183,3 +183,11 @@ test('provider selection controls credential requirements and Custom LLM fallbac
   assert.doesNotThrow(() => validateProviderConfig('StartVoiceChat', custom, { CUSTOM_LLM_API_KEY: 'custom' }));
   assert.throws(() => validateProviderConfig('StartVoiceChat', custom, {}), /CUSTOM_LLM_API_KEY or OPENAI_API_KEY/);
 });
+
+
+test('runtime configuration exposes the public AppId', async (t) => {
+  const base = await serve(t);
+  const res = await fetch(`${base}/runtimeConfig`);
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { Result: { appId: 'test-app' } });
+});
