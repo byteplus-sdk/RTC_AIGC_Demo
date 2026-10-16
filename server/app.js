@@ -11,10 +11,67 @@ const fetch = require('node-fetch');
 if (require.main === module) {
   require('dotenv').config({ path: require('path').resolve(__dirname, '../.env.local') });
 }
-const { ACCOUNT_INFO, RTC_APP_KEY, injectSensitiveInfo } = require('./sensitive');
+const { injectSensitiveInfo } = require('./sensitive');
 const { isVoiceChatMode, generateRtcAccessToken } = require('./util');
 
-function createApp({ fetchImpl = fetch } = {}) {
+const AGENT_ACTIONS = new Set([
+  'StartVoiceChat', 'StopVoiceChat',
+  'StartVoiceChatWithRealtimeAPI', 'StopVoiceChatWithRealtimeAPI',
+]);
+
+function required(value, name) {
+  if (typeof value !== 'string' || !value.trim()) throw new Error(`${name} is required`);
+  return value.trim();
+}
+
+function loadConfig(env = process.env) {
+  if (Boolean(env.BYTEPLUS_ACCESS_KEY_ID?.trim()) !== Boolean(env.BYTEPLUS_SECRET_ACCESS_KEY?.trim())) {
+    throw new Error('BYTEPLUS_ACCESS_KEY_ID and BYTEPLUS_SECRET_ACCESS_KEY must be set together');
+  }
+  const port = Number(env.SERVER_PORT || 3001);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error('SERVER_PORT must be an integer between 1 and 65535');
+  }
+  return {
+    appId: required(env.RTC_APP_ID, 'RTC_APP_ID'),
+    appKey: required(env.RTC_APP_KEY, 'RTC_APP_KEY'),
+    credential: {
+      accessKeyId: required(env.BYTEPLUS_ACCESS_KEY_ID, 'BYTEPLUS_ACCESS_KEY_ID'),
+      secretKey: required(env.BYTEPLUS_SECRET_ACCESS_KEY, 'BYTEPLUS_SECRET_ACCESS_KEY'),
+    },
+    port,
+  };
+}
+
+function validateProviderConfig(action, body, env) {
+  if (!action.startsWith('Start')) return;
+  const fields = [];
+  const speech = ['BYTEPLUS_SEED_SPEECH_APP_ID', 'BYTEPLUS_SEED_SPEECH_ACCESS_TOKEN'];
+  const amazon = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY'];
+  const google = ['GOOGLE_CREDENTIALS_JSON'];
+  if (isVoiceChatMode(action)) {
+    const config = body?.Config;
+    fields.push(...({
+      BytePlus: speech, amazon, google, Google: google,
+      GoogleV2: [...google, 'GOOGLE_RECOGNIZER_PATH'],
+    }[config?.ASRConfig?.Provider] || []));
+    fields.push(...({
+      byteplus_Bidirectional_streaming: speech, amazon, Google: google,
+      openai: ['OPENAI_API_KEY'],
+    }[config?.TTSConfig?.Provider] || []));
+    if (config?.LLMConfig?.Mode === 'BytePlusArk') fields.push('BYTEPLUS_MODEL_API_KEY');
+    if (config?.LLMConfig?.Mode === 'CustomLLM') {
+      required(env.CUSTOM_LLM_API_KEY || env.OPENAI_API_KEY, 'CUSTOM_LLM_API_KEY or OPENAI_API_KEY');
+    }
+    if (config?.WebSearchAgentConfig?.Enable === true) fields.push('ASKECHO_API_KEY');
+  } else {
+    fields.push('OPENAI_API_KEY');
+  }
+  for (const field of new Set(fields)) required(env[field], field);
+}
+
+function createApp({ fetchImpl = fetch, env = process.env } = {}) {
+  const config = loadConfig(env);
   const app = new Koa();
 
   app.use(
@@ -48,6 +105,9 @@ function createApp({ fetchImpl = fetch } = {}) {
       const body = ctx.request.body;
       const action = ctx.request.query.action;
 
+      if (!AGENT_ACTIONS.has(action)) ctx.throw(400, `unsupported action ${action}`);
+      validateProviderConfig(action, body, env);
+
       /**
        * @brief If OpenAPI invoked in the client like website, advised to generate session token for security.
        *        OpenAPI invoked in server side in this example, not necessary to generate session token.
@@ -71,7 +131,7 @@ function createApp({ fetchImpl = fetch } = {}) {
         },
       };
       const rtcSigner = new Signer(openApiRequestDataRTC, 'rtc');
-      const rtcSignedUri = `https://rtc.ap-southeast-1.byteplusapi.com?${rtcSigner.getSignUrl(ACCOUNT_INFO)}`;
+      const rtcSignedUri = `https://rtc.ap-southeast-1.byteplusapi.com?${rtcSigner.getSignUrl(config.credential)}`;
 
       /** Refer to https://docs.byteplus.com/en/docs/byteplus-rtc/docs-69828 to get more information. */
       const result = await fetchImpl(rtcSignedUri, {
@@ -93,10 +153,11 @@ function createApp({ fetchImpl = fetch } = {}) {
       const ResponseMetadata = { Action };
 
       /** Validate required parameters */
-      if (!appID || !RTC_APP_KEY || !roomID || !userID) {
-        ctx.throw(400, 'GenerateRtcAccessToken failed');
+      if (![appID, roomID, userID].every((value) => typeof value === 'string' && value.trim())) {
+        ctx.throw(400, 'appID, roomID and userID are required');
       }
-      const accessToken = generateRtcAccessToken({ appID, appKey: RTC_APP_KEY, roomID, userID });
+      if (appID !== config.appId) ctx.throw(400, 'appID does not match RTC_APP_ID');
+      const accessToken = generateRtcAccessToken({ appID, appKey: config.appKey, roomID, userID });
       ctx.body = {
         ResponseMetadata,
         Result: {
@@ -114,7 +175,7 @@ function createApp({ fetchImpl = fetch } = {}) {
 }
 
 function startServer() {
-  const port = process.env.SERVER_PORT || 3001;
+  const { port } = loadConfig();
   return createApp().listen(port, () => {
     console.log(`AIGC Server is running at http://localhost:${port}`);
   });
@@ -124,4 +185,4 @@ if (require.main === module) {
   startServer();
 }
 
-module.exports = { createApp, startServer };
+module.exports = { createApp, loadConfig, startServer, validateProviderConfig };
