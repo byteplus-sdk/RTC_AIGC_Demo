@@ -191,3 +191,115 @@ test('runtime configuration exposes the public AppId', async (t) => {
   assert.equal(res.status, 200);
   assert.deepEqual(await res.json(), { Result: { appId: 'test-app' } });
 });
+
+
+test('shutdown sends matching Stop requests for both modes through the proxy transport', async (t) => {
+  const calls = [];
+  const app = createApp({ env, fetchImpl: async (url, options) => {
+    calls.push({ action: new URL(url).searchParams.get('Action'), body: JSON.parse(options.body) });
+    assert.equal(options.timeout, 5000);
+    assert.ok(options.signal);
+    return { ok: true, json: async () => ({ Result: 'ok' }) };
+  } });
+  const server = app.listen(0, '127.0.0.1');
+  await new Promise((resolve) => server.once('listening', resolve));
+  t.after(() => new Promise((resolve) => server.close(resolve)));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  for (const suffix of ['', 'WithRealtimeAPI']) {
+    const res = await post(`${base}/proxyAIGCFetch?action=StartVoiceChat${suffix}`, {
+      AppId: 'test-app', RoomId: `room${suffix}`, TaskId: 'user',
+    });
+    assert.equal(res.status, 200);
+  }
+  await app.stopActiveAgents();
+  assert.deepEqual(calls.slice(2), [
+    { action: 'StopVoiceChat', body: { AppId: 'test-app', RoomId: 'room', TaskId: 'user' } },
+    { action: 'StopVoiceChatWithRealtimeAPI', body: { AppId: 'test-app', RoomId: 'roomWithRealtimeAPI', TaskId: 'user' } },
+  ]);
+  const res = await post(`${base}/proxyAIGCFetch?action=StopVoiceChat`, {});
+  assert.equal(res.status, 503);
+});
+
+test('SIGTERM stops active agents and exits the server process', { timeout: 10000 }, async (t) => {
+  const { spawn } = require('node:child_process');
+  const child = spawn(process.execPath, ['-e', `
+    const Koa = require('koa');
+    const listen = Koa.prototype.listen;
+    Koa.prototype.listen = function () { return listen.call(this, 0, '127.0.0.1'); };
+    const { startServer } = require('./app');
+    const server = startServer({
+      env: ${JSON.stringify(env)},
+      fetchImpl: async (url) => {
+        process.send({ action: new URL(url).searchParams.get('Action') });
+        return { ok: true, json: async () => ({ Result: 'ok' }) };
+      },
+    });
+    server.once('listening', () => process.send({ port: server.address().port }));
+    const stop = server.stop;
+    server.stop = () => stop().finally(() => process.disconnect());
+  `], { cwd: __dirname, stdio: ['ignore', 'ignore', 'pipe', 'ipc'] });
+  t.after(() => { if (child.exitCode === null) child.kill('SIGKILL'); });
+  const calls = [];
+  let errors = '';
+  child.stderr.on('data', (chunk) => { errors += chunk; });
+  const exited = new Promise((resolve, reject) => {
+    child.once('error', reject);
+    child.once('exit', (code) => resolve(code));
+  });
+  const port = await new Promise((resolve, reject) => {
+    child.once('error', reject);
+    child.once('exit', () => reject(new Error(errors || 'Server exited before listening')));
+    child.on('message', (message) => {
+      if (message.action) calls.push(message.action);
+      if (message.port) resolve(message.port);
+    });
+  });
+  const res = await post(`http://127.0.0.1:${port}/proxyAIGCFetch?action=StartVoiceChatWithRealtimeAPI`, {
+    AppId: 'test-app', RoomId: 'room', TaskId: 'user',
+  });
+  assert.equal(res.status, 200);
+  child.kill('SIGTERM');
+  assert.equal(await exited, 0, errors);
+  assert.deepEqual(calls, ['StartVoiceChatWithRealtimeAPI', 'StopVoiceChatWithRealtimeAPI']);
+});
+
+test('accepted starts with delayed responses receive compensating Stop requests', async (t) => {
+  const http = require('node:http');
+  const calls = [];
+  let cloudActive = false;
+  const upstream = http.createServer((req, res) => {
+    const action = new URL(req.url, 'http://localhost').searchParams.get('Action');
+    calls.push(action);
+    cloudActive = action.startsWith('Start');
+    req.resume();
+    const respond = () => {
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ Result: 'ok' }));
+    };
+    if (cloudActive) setTimeout(respond, 100);
+    else respond();
+  });
+  await new Promise((resolve) => upstream.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise((resolve) => upstream.close(resolve)));
+  const app = createApp({ env, fetchImpl: (url, options) => {
+    const action = new URL(url).searchParams.get('Action');
+    return fetch(`http://127.0.0.1:${upstream.address().port}/?Action=${action}`, {
+      ...options, timeout: action.startsWith('Start') ? 20 : 1000,
+    });
+  } });
+  const server = app.listen(0, '127.0.0.1');
+  await new Promise((resolve) => server.once('listening', resolve));
+  t.after(() => new Promise((resolve) => server.close(resolve)));
+  for (const suffix of ['', 'WithRealtimeAPI']) {
+    const res = await post(`http://127.0.0.1:${server.address().port}/proxyAIGCFetch?action=StartVoiceChat${suffix}`, {
+      AppId: 'test-app', RoomId: 'room', TaskId: 'user',
+    });
+    assert.equal(res.status, 502);
+    assert.equal(cloudActive, false);
+  }
+  await app.stopActiveAgents();
+  assert.deepEqual(calls, [
+    'StartVoiceChat', 'StopVoiceChat',
+    'StartVoiceChatWithRealtimeAPI', 'StopVoiceChatWithRealtimeAPI',
+  ]);
+});

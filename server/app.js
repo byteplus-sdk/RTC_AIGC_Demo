@@ -8,6 +8,7 @@ const bodyParser = require('koa-bodyparser');
 const cors = require('koa2-cors');
 const { Signer } = require('@byteplus/vcloud-sdk-nodejs');
 const fetch = require('node-fetch');
+const { createAgentLifecycle } = require('./agentLifecycle');
 if (require.main === module) {
   require('dotenv').config({ path: require('path').resolve(__dirname, '../.env.local') });
 }
@@ -73,6 +74,37 @@ function validateProviderConfig(action, body, env) {
 function createApp({ fetchImpl = fetch, env = process.env } = {}) {
   const config = loadConfig(env);
   const app = new Koa();
+  const controller = new AbortController();
+  const lifecycle = createAgentLifecycle(async (action, body) => {
+    /** Refer to https://www.npmjs.com/package/@byteplus/vcloud-sdk-nodejs to get more information. */
+    const openApiRequestDataRTC = {
+      region: 'ap-southeast-1',
+      method: 'POST',
+      params: {
+        Action: action,
+        Version: '2025-05-01',
+      },
+      headers: {
+        Host: 'rtc.ap-southeast-1.byteplusapi.com',
+        'Content-Type': 'application/json',
+      },
+    };
+    const rtcSigner = new Signer(openApiRequestDataRTC, 'rtc');
+    const rtcSignedUri = `https://rtc.ap-southeast-1.byteplusapi.com?${rtcSigner.getSignUrl(config.credential)}`;
+
+    /** Refer to https://docs.byteplus.com/en/docs/byteplus-rtc/docs-69828 to get more information. */
+    const result = await fetchImpl(rtcSignedUri, {
+      method: 'POST',
+      headers: openApiRequestDataRTC.headers,
+      body: JSON.stringify(body),
+      timeout: 5000,
+      signal: controller.signal,
+    });
+    if (result.ok === false) throw new Error(`RTC OpenAPI returned HTTP ${result.status}`);
+    return result.json();
+  });
+  app.stopActiveAgents = lifecycle.stop;
+  app.abortAgentRequests = () => controller.abort();
 
   app.use(
     cors({
@@ -122,30 +154,7 @@ function createApp({ fetchImpl = fetch, env = process.env } = {}) {
       /** Injecting the sensitive info to request body */
       injectSensitiveInfo(body, isVoiceChatMode(action));
 
-      /** Refer to https://www.npmjs.com/package/@byteplus/vcloud-sdk-nodejs to get more information. */
-      const openApiRequestDataRTC = {
-        region: 'ap-southeast-1',
-        method: 'POST',
-        params: {
-          Action: action,
-          Version: '2025-05-01',
-        },
-        headers: {
-          Host: 'rtc.ap-southeast-1.byteplusapi.com',
-          'Content-Type': 'application/json',
-        },
-      };
-      const rtcSigner = new Signer(openApiRequestDataRTC, 'rtc');
-      const rtcSignedUri = `https://rtc.ap-southeast-1.byteplusapi.com?${rtcSigner.getSignUrl(config.credential)}`;
-
-      /** Refer to https://docs.byteplus.com/en/docs/byteplus-rtc/docs-69828 to get more information. */
-      const result = await fetchImpl(rtcSignedUri, {
-        method: 'POST',
-        headers: openApiRequestDataRTC.headers,
-        body: JSON.stringify(body),
-      });
-      const response = await result.json();
-      ctx.body = response;
+      ctx.body = await lifecycle.request(action, body);
       return;
     }
 
@@ -179,11 +188,42 @@ function createApp({ fetchImpl = fetch, env = process.env } = {}) {
   return app;
 }
 
-function startServer() {
-  const { port } = loadConfig();
-  return createApp().listen(port, () => {
+function startServer(options = {}) {
+  const { port } = loadConfig(options.env);
+  const app = createApp(options);
+  const server = app.listen(port, () => {
     console.log(`AIGC Server is running at http://localhost:${port}`);
   });
+  let stopping;
+  const onSignal = () => {
+    server.stop().catch((error) => {
+      console.error(error.message);
+      process.exitCode = 1;
+    });
+  };
+  server.stop = () => {
+    if (stopping) return stopping;
+    const cleanup = app.stopActiveAgents();
+    const closed = new Promise((resolve, reject) => {
+      server.close((error) => error ? reject(error) : resolve());
+    });
+    const deadline = setTimeout(() => {
+      app.abortAgentRequests();
+      server.closeAllConnections();
+    }, 15000);
+    deadline.unref();
+    stopping = Promise.allSettled([cleanup, closed]).then((results) => {
+      clearTimeout(deadline);
+      process.removeListener('SIGINT', onSignal);
+      process.removeListener('SIGTERM', onSignal);
+      const failure = results.find((result) => result.status === 'rejected');
+      if (failure) throw failure.reason;
+    });
+    return stopping;
+  };
+  process.on('SIGINT', onSignal);
+  process.on('SIGTERM', onSignal);
+  return server;
 }
 
 if (require.main === module) {
