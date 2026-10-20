@@ -15,6 +15,7 @@ import {
   localJoinRoom,
   localLeaveRoom,
   updateAIGCState,
+  updateFullScreen,
   updateLocalUser,
 } from '@/store/slices/room';
 
@@ -221,6 +222,7 @@ export const useLeave = () => {
         await Promise.allSettled([
           RtcClient.stopAudioCapture(),
           RtcClient.engine?.stopScreenCapture(),
+          RtcClient.engine?.stopVideoCapture(),
         ]);
       } finally {
         await RtcClient.leaveRoom();
@@ -229,6 +231,7 @@ export const useLeave = () => {
       logger.debug('leaveRoom error', e);
     } finally {
       dispatch(localLeaveRoom());
+      dispatch(updateFullScreen({ isFullScreen: false }));
       dispatch(updateAIGCState({ isAIGCEnable: false }));
       dispatch(clearHistoryMsg());
       leavingRef.current = false;

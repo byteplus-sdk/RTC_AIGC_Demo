@@ -45,6 +45,7 @@ export interface RoomState {
   isAINREnable: boolean;
   time: number;
   roomId?: string;
+  sessionStartedAt?: number;
   localUser: LocalUser;
   remoteUsers: IUser[];
   autoPlayFailUser: string[];
@@ -113,7 +114,7 @@ const initialState: RoomState = {
   remoteUsers: [],
   localUser: {
     publishAudio: true,
-    publishVideo: true,
+    publishVideo: false,
   },
   autoPlayFailUser: [],
   isJoined: false,
@@ -154,6 +155,7 @@ export const roomSlice = createSlice({
       }
     ) => {
       state.roomId = payload.roomId;
+      state.sessionStartedAt = Date.now();
       state.localUser = {
         ...state.localUser,
         ...payload.user,
@@ -162,10 +164,11 @@ export const roomSlice = createSlice({
     },
     localLeaveRoom: (state) => {
       state.roomId = undefined;
+      state.sessionStartedAt = undefined;
       state.time = -1;
       state.localUser = {
         publishAudio: true,
-        publishVideo: true,
+        publishVideo: false,
       };
       state.remoteUsers = [];
       state.isJoined = false;

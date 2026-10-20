@@ -33,12 +33,11 @@ function Conversation(props: React.HTMLAttributes<HTMLDivElement>) {
   const containerRef = useRef<HTMLDivElement>(null);
   const lastMsg = msgHistory?.[msgHistory.length - 1];
   const isAvatarScene = Config.AvatarEnable;
-  // Only realtime & byteplus tts are supported; hide subtitles when avatar is enabled.
   const isSupportedSubtitle =
     isShowSubtitle &&
-    !isAvatarScene &&
     (isRealTimeCallMode() ||
-      (!isRealTimeCallMode() && Config['Provider.TTS'] === Provider.Byteplus));
+      (!isRealTimeCallMode() &&
+        [Provider.Byteplus, Provider.OpenAI, Provider.Google].includes(Config['Provider.TTS'])));
 
   useEffect(() => {
     const container = containerRef.current;

@@ -3,7 +3,8 @@ import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import config from '@/config';
-import roomReducer, { updateAIConfig } from '@/store/slices/room';
+import roomReducer, { updateAIConfig, updateLocalUser, updateScene } from '@/store/slices/room';
+import { getSceneSettings, SCENE } from '@/config/scene';
 import RtcClient from '@/lib/RtcClient';
 import ToolBar from './ToolBar';
 
@@ -11,7 +12,7 @@ jest.mock('@byteplus/rtc', () => ({
   __esModule: true,
   default: { events: { onTrackEnded: 'track-ended' } },
   MediaType: { VIDEO: 2 },
-  StreamIndex: { STREAM_INDEX_SCREEN: 1 },
+  StreamIndex: { STREAM_INDEX_MAIN: 0, STREAM_INDEX_SCREEN: 1 },
   NetworkQuality: { UNKNOWN: 0 },
 }));
 jest.mock('@/lib/RtcClient', () => ({
@@ -20,6 +21,10 @@ jest.mock('@/lib/RtcClient', () => ({
     off: jest.fn(),
     startScreenCapture: jest.fn(),
     stopScreenCapture: jest.fn(),
+    startVideoCapture: jest.fn(),
+    stopVideoCapture: jest.fn(),
+    publishStream: jest.fn(),
+    unpublishStream: jest.fn(),
     publishScreen: jest.fn(),
     unpublishScreen: jest.fn(),
   },
@@ -34,6 +39,7 @@ let container;
 let root;
 let previousVision;
 let previousEngine;
+let store;
 beforeEach(() => {
   global.IS_REACT_ACT_ENVIRONMENT = true;
   previousEngine = RtcClient.engine;
@@ -44,7 +50,7 @@ beforeEach(() => {
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
-  const store = configureStore({ reducer: { room: roomReducer } });
+  store = configureStore({ reducer: { room: roomReducer } });
   store.dispatch(updateAIConfig({ VisionEnable: true }));
   act(() =>
     root.render(
@@ -83,9 +89,10 @@ for (const outcome of ['resolve', 'reject']) {
     const retiringEngine = RtcClient.engine;
     let completeCapture;
     retiringEngine.startScreenCapture.mockImplementationOnce(
-      () => new Promise((resolve, reject) => {
-        completeCapture = outcome === 'resolve' ? resolve : () => reject(new Error('Cancelled'));
-      })
+      () =>
+        new Promise((resolve, reject) => {
+          completeCapture = outcome === 'resolve' ? resolve : () => reject(new Error('Cancelled'));
+        })
     );
     await act(async () => container.querySelector('[aria-label="Share screen"]').click());
     act(() => root.render(null));
@@ -104,3 +111,79 @@ for (const outcome of ['resolve', 'reject']) {
     expect(newEngine.off).not.toHaveBeenCalled();
   });
 }
+
+test('camera capture publishes and releases the main video stream', async () => {
+  await act(async () => container.querySelector('[aria-label="Turn on camera"]').click());
+  expect(RtcClient.engine.startVideoCapture).toHaveBeenCalledTimes(1);
+  expect(RtcClient.engine.publishStream).toHaveBeenCalledWith(2);
+  await act(async () => container.querySelector('[aria-label="Turn off camera"]').click());
+  expect(RtcClient.engine.unpublishStream).toHaveBeenCalledWith(2);
+  expect(RtcClient.engine.stopVideoCapture).toHaveBeenCalled();
+});
+
+test('switching from camera to screen stops the camera first', async () => {
+  await act(async () => container.querySelector('[aria-label="Turn on camera"]').click());
+  await act(async () => container.querySelector('[aria-label="Share screen"]').click());
+  expect(RtcClient.engine.stopVideoCapture).toHaveBeenCalled();
+  expect(container.querySelector('[aria-label="Turn on camera"]')).not.toBeNull();
+  expect(container.querySelector('[aria-label="Stop sharing screen"]')).not.toBeNull();
+});
+
+test('pending camera acquisition stays attached to its originating engine', async () => {
+  const engine = RtcClient.engine;
+  let complete;
+  engine.startVideoCapture.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        complete = resolve;
+      })
+  );
+  await act(async () => container.querySelector('[aria-label="Turn on camera"]').click());
+  act(() => root.render(null));
+  RtcClient.engine = { publishStream: jest.fn(), stopVideoCapture: jest.fn() };
+  await act(async () => complete());
+  expect(engine.publishStream).not.toHaveBeenCalled();
+  expect(engine.stopVideoCapture).toHaveBeenCalled();
+  expect(RtcClient.engine.publishStream).not.toHaveBeenCalled();
+  expect(RtcClient.engine.stopVideoCapture).not.toHaveBeenCalled();
+});
+
+
+test('switching to the screen reader scene releases the camera', async () => {
+  await act(async () => container.querySelector('[aria-label="Turn on camera"]').click());
+  await act(async () => {
+    store.dispatch(updateAIConfig(getSceneSettings(SCENE.SCREEN_READER)));
+    store.dispatch(updateScene(SCENE.SCREEN_READER));
+  });
+  expect(RtcClient.engine.unpublishStream).toHaveBeenCalledWith(2);
+  expect(RtcClient.engine.stopVideoCapture).toHaveBeenCalledTimes(1);
+  expect(store.getState().room.localUser.publishVideo).toBe(false);
+  expect(container.querySelector('[aria-label="Turn on camera"]')).toBeNull();
+  expect(container.querySelector('[aria-label="Turn off camera"]')).toBeNull();
+  expect(container.querySelector('[aria-label="Share screen"]')).not.toBeNull();
+});
+
+test('pending camera unpublication cannot change a replacement session', async () => {
+  const engine = RtcClient.engine;
+  await act(async () => container.querySelector('[aria-label="Turn on camera"]').click());
+  let finishUnpublish;
+  engine.unpublishStream.mockImplementationOnce(
+    () => new Promise((resolve) => { finishUnpublish = resolve; })
+  );
+  await act(async () => container.querySelector('[aria-label="Share screen"]').click());
+  act(() => root.render(null));
+  RtcClient.engine = {
+    startScreenCapture: jest.fn(),
+    publishScreen: jest.fn(),
+    stopVideoCapture: jest.fn(),
+  };
+  store.dispatch(updateLocalUser({ userId: 'replacement-user', publishVideo: true }));
+  const replacementUser = store.getState().room.localUser;
+  await act(async () => finishUnpublish());
+  expect(engine.stopVideoCapture).not.toHaveBeenCalled();
+  expect(engine.startScreenCapture).not.toHaveBeenCalled();
+  expect(RtcClient.engine.startScreenCapture).not.toHaveBeenCalled();
+  expect(RtcClient.engine.publishScreen).not.toHaveBeenCalled();
+  expect(RtcClient.engine.stopVideoCapture).not.toHaveBeenCalled();
+  expect(store.getState().room.localUser).toBe(replacementUser);
+});

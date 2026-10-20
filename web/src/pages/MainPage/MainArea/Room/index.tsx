@@ -6,6 +6,8 @@
 import { useSelector } from 'react-redux';
 import Conversation from './Conversation';
 import ToolBar from './ToolBar';
+import CameraArea from './CameraArea';
+import SessionTime from '../../Menu/components/SessionTime';
 import AudioController from './AudioController';
 import utils from '@/utils/utils';
 import FullScreenCard from '@/components/FullScreenCard';
@@ -21,6 +23,7 @@ function Room() {
   const isAvatarScene = Config.AvatarEnable;
   return (
     <div className={`${style.wrapper} ${utils.isMobile() ? style.mobile : ''}`}>
+      <SessionTime enforce />
       {isShowSubtitle && !utils.isMobile() && (
         <UserTag name={Name[scene]} className={style.subTitleUserTag} />
       )}
@@ -33,6 +36,7 @@ function Room() {
           className={isShowSubtitle ? style.subtitleAiAvatar : ''}
         />
       )}
+      {!utils.isMobile() && <CameraArea />}
       <Conversation className={style.conversation} />
       <ToolBar className={style.toolBar} />
       <AudioController className={style.controller} />

@@ -34,6 +34,7 @@ test.each([true, false])('provider configuration preserves web search, changed=%
   const container = document.createElement('div');
   const root = createRoot(container);
   try {
+    config.endPointId = 'ep-test';
     config['Provider.LLM'] = Provider.Byteplus;
     config.LLMWebSearchEnabled = true;
     const store = configureStore({ reducer: { room: roomReducer } });

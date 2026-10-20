@@ -1,3 +1,4 @@
+import { StreamIndex } from '@byteplus/rtc';
 import TEACHING_ASSISTANT from '@/assets/img/TEACHING_ASSISTANT.png';
 import CUSTOM from '@/assets/img/CUSTOM_AVATAR.svg';
 import VIRTUAL_GIRL_FRIEND from '@/assets/img/VIRTUAL_GIRL_FRIEND.png';
@@ -6,6 +7,7 @@ import SCREEN_READER from '@/assets/img/SCREEN_READER.png';
 import TUTOR from '@/assets/img/TUTOR.png';
 import { AKOOL_AVATAR_TYPE } from './voiceChat/avatar';
 import { Provider } from './basic';
+import { ModelNames } from './voiceChat/llm';
 import type { ConfigFactory } from './config';
 import {
   BYTE_PLUS_TTS_2_VOICE_TYPE,
@@ -268,11 +270,18 @@ export function getSceneSettings(scene: SCENE): Partial<ConfigFactory> {
     ? Provider.Amazon
     : Provider.Byteplus;
   return {
-    VisionEnable: scene === SCENE.SCREEN_READER,
+    Model: language ? ModelNames.GPT4o : ModelNames.Seed21Turbo,
+    'Provider.LLM': language ? Provider.OpenAI : Provider.Byteplus,
+    ...(language ? { endPointId: 'gpt-4o-2024-11-20' } : {}),
+    VisionEnable: scene !== SCENE.CUSTOM,
+    VisionSourceType:
+      scene === SCENE.SCREEN_READER
+        ? StreamIndex.STREAM_INDEX_SCREEN
+        : StreamIndex.STREAM_INDEX_MAIN,
     'Provider.ASR': language ? Provider.GoogleAsrV2 : Provider.Byteplus,
     'Provider.TTS': ttsProvider,
     'Provider.Avatar': scene === SCENE.TUTOR ? Provider.Akool : Provider.None,
-    avatar: scene === SCENE.TUTOR ? AKOOL_AVATAR_TYPE.Tristan : '',
+    avatar: scene === SCENE.TUTOR ? AKOOL_AVATAR_TYPE.Alinna : '',
     voice,
     SeedAsrVersion: '2.0',
     SeedTtsVersion: getSeedTtsVersionFromVoice(voice),

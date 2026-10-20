@@ -104,17 +104,14 @@ export const getSeedTtsVersionFromVoice = (voiceType: IVoiceType): SeedVersion =
 /**
  * @brief OpenAI Voice Type
  * @refer https://platform.openai.com/docs/guides/text-to-speech#voice-options
- * @note Only support Alloy now.
  */
 export enum OPENAI_VOICE_TYPE {
   ALLOY = 'alloy',
-  // ASH = 'ash',
-  // BALLAD = 'ballad',
-  // CORAL = 'coral',
-  // ECHO = 'echo',
-  // SAGE = 'sage',
-  // SHIMMER = 'shimmer',
-  // VERSE = 'verse',
+  ECHO = 'echo',
+  FABLE = 'fable',
+  NOVA = 'nova',
+  ONYX = 'onyx',
+  SHIMMER = 'shimmer',
 }
 
 /**

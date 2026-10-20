@@ -3,6 +3,7 @@
  * SPDX-license-identifier: BSD-3-Clause
  */
 const merge = require('lodash/merge');
+const { isGoogleLlm } = require('./providerConfig');
 
 const AVATAR_PROVIDER = {
   VOLCANO: 'Volcano',
@@ -248,6 +249,9 @@ const injectSensitiveInfo = (body, isVoiceChatMode) => {
         body.Config?.LLMConfig,
         VOICE_CHAT_MODE.LLMConfig[body.Config?.LLMConfig?.Mode]
       );
+      if (body.Config.LLMConfig.Mode === 'CustomLLM' && isGoogleLlm(body.Config.LLMConfig)) {
+        body.Config.LLMConfig.APIKey = process.env.GOOGLE_LLM_API_KEY || '';
+      }
     }
     if (body?.Config?.AvatarConfig) {
       body.Config.AvatarConfig = mergeAvatarSensitiveByProvider(

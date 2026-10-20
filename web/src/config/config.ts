@@ -12,6 +12,7 @@ import { isLlmProviderAllowedForWebSearch, ModuleType, Provider } from './basic'
 
 import type { IVoiceType } from './voiceChat/tts';
 import { getSeedTtsVersionFromVoice } from './voiceChat/tts';
+import { ModelNames, THINKING_TYPE, isDeepThinkingMode } from './voiceChat/llm';
 import type { SeedVersion } from './voiceChat/seedVersion';
 import type { LlmCustomMcpEntry } from './voiceChat/mcpManager';
 
@@ -46,6 +47,20 @@ export class ConfigFactory {
   Token = undefined;
 
   VisionEnable = false;
+
+  VisionSourceType = StreamIndex.STREAM_INDEX_MAIN;
+
+  Model: string = ModelNames.Seed21Turbo;
+
+  set CustomModelURL(value: string) {
+    this.#voiceChatManager.llm.url = value;
+  }
+
+  get CustomModelURL() {
+    return this.#voiceChatManager.llm.url;
+  }
+
+  ThinkingType = THINKING_TYPE.DISABLED;
 
   BotName = 'RobotMan_';
 
@@ -266,6 +281,9 @@ export class ConfigFactory {
       ...this.#manager.config,
     };
     if ('Config' in params) {
+      if (this['Provider.LLM'] === Provider.Byteplus && isDeepThinkingMode(this.Model)) {
+        Object.assign(params.Config.LLMConfig, { ThinkingType: this.ThinkingType });
+      }
       Object.assign(params.Config.LLMConfig, {
         VisionConfig: {
           Enable:
@@ -273,7 +291,7 @@ export class ConfigFactory {
             !this.LLMWebSearchEnabled &&
             !this.CustomMcpList.some((item) => item.URL?.trim()),
           SnapshotConfig: {
-            StreamType: StreamIndex.STREAM_INDEX_SCREEN,
+            StreamType: this.VisionSourceType,
             Height: 480,
             Interval: 1000,
             ImagesLimit: 1,

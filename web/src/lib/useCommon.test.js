@@ -161,6 +161,7 @@ test('exit waits for cleanup and coalesces repeated clicks', async () => {
   await act(async () => finishLeave());
   expect(actions.map((action) => action.type)).toEqual([
     'room/localLeaveRoom',
+    'room/updateFullScreen',
     'room/updateAIGCState',
     'room/clearHistoryMsg',
   ]);

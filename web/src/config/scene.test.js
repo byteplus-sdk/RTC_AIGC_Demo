@@ -1,6 +1,8 @@
 import config from '@/config';
 import { Provider } from './basic';
 import { SCENE, getSceneSettings } from './scene';
+import { ModelNames, THINKING_TYPE, isVisionMode, isDeepThinkingMode } from './voiceChat/llm';
+import { AKOOL_AVATAR_TYPE } from './voiceChat/avatar';
 import { getSettings } from './settings';
 import reducer, { updateAIConfig } from '@/store/slices/room';
 
@@ -72,7 +74,7 @@ test('voice interruption maps to the VoiceChat request', () => {
 test('leaving the screen scene disables cached vision configuration', () => {
   Object.assign(config, getSceneSettings(SCENE.SCREEN_READER));
   config.config;
-  Object.assign(config, getSceneSettings(SCENE.TEACHING_ASSISTANT));
+  Object.assign(config, getSceneSettings(SCENE.CUSTOM));
   expect(config.config.Config.LLMConfig.VisionConfig.Enable).toBe(false);
 });
 
@@ -97,4 +99,50 @@ test('custom character clears preset prompts and restores base capabilities', ()
   Object.assign(config, getSceneSettings(SCENE.SCREEN_READER));
   Object.assign(config, getSceneSettings(SCENE.CUSTOM));
   expect(config.VisionEnable).toBe(false);
+});
+
+test('tutor selects the Alinna avatar and a vision-capable scene', () => {
+  const value = getSceneSettings(SCENE.TUTOR);
+  expect(value.avatar).toBe(AKOOL_AVATAR_TYPE.Alinna);
+  expect(value.VisionEnable).toBe(true);
+});
+
+test('deep thinking is included in Ark requests', () => {
+  config['Provider.LLM'] = Provider.Byteplus;
+  config.Model = ModelNames.Seed21Turbo;
+  config.ThinkingType = THINKING_TYPE.ENABLED;
+  expect(config.config.Config.LLMConfig.ThinkingType).toBe('enabled');
+  config.ThinkingType = THINKING_TYPE.DISABLED;
+  expect(config.config.Config.LLMConfig.ThinkingType).toBe('disabled');
+  expect(isVisionMode(ModelNames.GPT4o)).toBe(true);
+  expect(isDeepThinkingMode(ModelNames.GPT4o)).toBe(false);
+});
+
+test('vision input follows the selected media source', () => {
+  Object.assign(config, getSceneSettings(SCENE.TUTOR));
+  config['Provider.LLM'] = Provider.Byteplus;
+  config.CustomMcpList = [];
+  config.LLMWebSearchEnabled = false;
+  config.VisionSourceType = 0;
+  expect(config.config.Config.LLMConfig.VisionConfig.SnapshotConfig.StreamType).toBe(0);
+  config.VisionSourceType = 1;
+  expect(config.config.Config.LLMConfig.VisionConfig.SnapshotConfig.StreamType).toBe(1);
+});
+
+test('Google and custom model selections produce their own request endpoints', () => {
+  config['Provider.LLM'] = Provider.Google;
+  config.endPointId = 'gemini-2.5-flash';
+  expect(config.config.Config.LLMConfig).toMatchObject({
+    Mode: 'CustomLLM',
+    ModelName: 'gemini-2.5-flash',
+    Url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+  });
+  config['Provider.LLM'] = Provider.CustomLLM;
+  config.endPointId = 'test-model';
+  config.CustomModelURL = 'https://example.com/chat/completions';
+  expect(config.config.Config.LLMConfig).toMatchObject({
+    Mode: 'CustomLLM',
+    ModelName: 'test-model',
+    Url: 'https://example.com/chat/completions',
+  });
 });

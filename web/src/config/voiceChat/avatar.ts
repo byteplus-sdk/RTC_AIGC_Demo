@@ -14,7 +14,7 @@ export enum BYTE_PLUS_AVATAR_TYPE {
 }
 
 export enum AKOOL_AVATAR_TYPE {
-  Tristan = 'dvp_Tristan_cloth2_1080P',
+  Alinna = 'dvp_Alinna_realisticbg_20241224',
 }
 
 const BYTEPLUS_AVATAR = {
@@ -26,8 +26,8 @@ const BYTEPLUS_AVATAR = {
 };
 
 const AKOOL_AVATAR = {
-  [AKOOL_AVATAR_TYPE.Tristan]: {
-    avatarRole: AKOOL_AVATAR_TYPE.Tristan,
+  [AKOOL_AVATAR_TYPE.Alinna]: {
+    avatarRole: AKOOL_AVATAR_TYPE.Alinna,
     description: 'Akool Avatar',
     icon: ArkSVG,
   },
@@ -117,7 +117,7 @@ export class AvatarManager {
         AvatarUserID: '',
         ProviderParams: {
           ApiKey: '',
-          AvatarId: AKOOL_AVATAR_TYPE.Tristan,
+          AvatarId: AKOOL_AVATAR_TYPE.Alinna,
         },
       },
     };

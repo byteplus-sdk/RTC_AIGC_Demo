@@ -8,6 +8,7 @@ const bodyParser = require('koa-bodyparser');
 const cors = require('koa2-cors');
 const { Signer } = require('@byteplus/vcloud-sdk-nodejs');
 const fetch = require('node-fetch');
+const { isGoogleLlm } = require('./providerConfig');
 const { createAgentLifecycle } = require('./agentLifecycle');
 if (require.main === module) {
   require('dotenv').config({ path: require('path').resolve(__dirname, '../.env.local') });
@@ -62,7 +63,8 @@ function validateProviderConfig(action, body, env) {
     }[config?.TTSConfig?.Provider] || []));
     if (config?.LLMConfig?.Mode === 'BytePlusArk') fields.push('BYTEPLUS_MODEL_API_KEY');
     if (config?.LLMConfig?.Mode === 'CustomLLM') {
-      required(env.CUSTOM_LLM_API_KEY || env.OPENAI_API_KEY, 'CUSTOM_LLM_API_KEY or OPENAI_API_KEY');
+      if (isGoogleLlm(config.LLMConfig)) fields.push('GOOGLE_LLM_API_KEY');
+      else required(env.CUSTOM_LLM_API_KEY || env.OPENAI_API_KEY, 'CUSTOM_LLM_API_KEY or OPENAI_API_KEY');
     }
     if (config?.WebSearchAgentConfig?.Enable === true) fields.push('ASKECHO_API_KEY');
   } else {

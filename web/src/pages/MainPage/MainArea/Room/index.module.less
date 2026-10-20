@@ -1,4 +1,5 @@
 .wrapper {
+  overflow: hidden;
   position: relative;
   width: 100%;
   height: 100%;
@@ -468,4 +469,54 @@ body[arco-theme='dark'] {
 .controlButton:focus-visible {
   outline: 2px solid var(--brand-primary);
   outline-offset: 3px;
+}
+
+.camera-wrapper {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: min(264px, 30%);
+  aspect-ratio: 264 / 184;
+  border-radius: 8px;
+  border: 1px solid var(--border-primary, #dde2e9);
+  background: #eaeef4;
+  overflow: hidden;
+  z-index: 4;
+}
+.previewTag {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  z-index: 2;
+}
+.previewPlayer,
+.previewPlaceholder {
+  width: 100%;
+  height: 100%;
+}
+.previewPlaceholder {
+  display: grid;
+  place-items: center;
+}
+.previewPlaceholder img {
+  width: 60px;
+  height: 60px;
+}
+.previewAvatar {
+  position: absolute;
+  inset: 0;
+  transform: scale(0.5);
+}
+.expandPreview {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #dde2e9;
+  border-radius: 6px;
+  background: #222a40;
+  color: white;
+  cursor: pointer;
+  z-index: 2;
 }

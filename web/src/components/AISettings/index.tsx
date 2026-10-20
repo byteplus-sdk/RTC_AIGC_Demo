@@ -11,7 +11,12 @@ import { IconSwap } from '@arco-design/web-react/icon';
 import { ArkVoiceDescription, ArkTts2VoiceDescription, VendorSVG } from '@/config';
 import { ASR_PROVIDER_OPTIONS, Provider } from '@/config/basic';
 import RtcClient from '@/lib/RtcClient';
-import { clearHistoryMsg, updateAIConfig, updateScene } from '@/store/slices/room';
+import {
+  clearHistoryMsg,
+  updateIsShowSubtitle,
+  updateAIConfig,
+  updateScene,
+} from '@/store/slices/room';
 import { RootState } from '@/store';
 import CheckIcon from '../CheckIcon';
 import {
@@ -23,6 +28,7 @@ import {
   SCENE_TAG,
   getSceneSettings,
 } from '@/config/scene';
+import { SCENE_VOICES, getGoogleSceneVoices } from '@/config/sceneVoices';
 import { getSettings, getConfigSnapshot } from '@/config/settings';
 import { ConfigFactory } from '@/config/config';
 import CheckBoxSelector from '../CheckBoxSelector';
@@ -48,7 +54,12 @@ import {
   seedAsrVersionFromKey,
   seedTtsVersionFromKey,
 } from '@/config/voiceChat/seedVersion';
-import { ModelMap, isLlmProviderAllowedForWebSearch } from '@/config/voiceChat/llm';
+import {
+  ModelMap,
+  ModelNames,
+  isVisionMode,
+  isLlmProviderAllowedForWebSearch,
+} from '@/config/voiceChat/llm';
 import { AvatarMap, RealtimeAvatarMap } from '@/config/voiceChat/avatar';
 import styles from './index.module.less';
 
@@ -84,13 +95,26 @@ const formatAsrOptions = (options: Provider[]) =>
     icon: VendorSVG[key === BYTEPLUS_ASR_V1 || key === BYTEPLUS_ASR_V2 ? Provider.Byteplus : key],
   }));
 
-const formatVoiceTypeOptions = (options: {
-  [key in Provider]?: { [key: string]: any };
-}) => {
+const formatVoiceTypeOptions = (
+  options: {
+    [key in Provider]?: { [key: string]: any };
+  },
+  scene?: SCENE
+) => {
   return Object.keys(options).reduce<Record<string, ReturnType<typeof formatOptions>>>(
     (acc, key) => {
       const provider = key as Provider;
-      const voices = options[provider];
+      const voices = Object.fromEntries(
+        Object.entries(options[provider] || {}).filter(
+          ([, voice]) =>
+            !scene ||
+            !LANGUAGE_SCENES.includes(scene) ||
+            !SCENE_VOICES[scene]?.length ||
+            SCENE_VOICES[scene].includes(voice) ||
+            (provider === Provider.Google && String(voice).includes('-Chirp3-HD-'))
+        )
+      );
+      if (!Object.keys(voices).length) return acc;
       return {
         ...acc,
         [provider]: (Object.keys(voices || {}) as Provider[]).map((option) => ({
@@ -121,7 +145,7 @@ const formatModelTypeOptions = (options: {
         [provider]: (Object.keys(models || {}) as Provider[]).map((option) => ({
           key: option,
           label: utils.capitalizeFirstLetter(option),
-          value: models![option].endPointId,
+          value: option,
           icon: models![option].icon || VendorSVG[provider || option],
           description: models![option].description || '',
         })),
@@ -172,38 +196,25 @@ function AISettings() {
       ...AMAZON_VOICE_TYPE,
       ...GOOGLE_VOICE_TYPE,
     };
-    const allModels = {
-      ...ModelMap.BytePlusArk,
-      ...ModelMap.openai,
-    };
     return isRealTimeCallMode()
       ? [
-          `TTS ${Object.keys(OPENAI_VOICE_TYPE).find(
+          `VoiceType ${Object.keys(OPENAI_VOICE_TYPE).find(
             (key) =>
               OPENAI_VOICE_TYPE[key as keyof typeof OPENAI_VOICE_TYPE] === room.aiConfig.voice
           )}`,
           room.aiConfig['Provider.Avatar'] !== Provider.None
-            ? `Avatar ${`${utils.capitalizeFirstLetter(room.aiConfig.avatar).substring(0, 12)}...`}`
+            ? `Avatar ${room.aiConfig.avatar}`
             : void 0,
         ].filter(Boolean)
       : [
-          `TTS ${
+          `VoiceType ${
             Object.keys(allVoices).find(
               (key) => allVoices[key as keyof typeof allVoices] === room.aiConfig.voice
             ) ||
             room.aiConfig.voice ||
             'Custom'
           }`,
-          `Model ${
-            room.aiConfig.endPointId === 'Your model ID'
-              ? 'Configured by server'
-              : Object.keys(allModels).find(
-                  (key) =>
-                    allModels[key as keyof typeof allModels].endPointId === room.aiConfig.endPointId
-                ) ||
-                room.aiConfig.endPointId ||
-                'Custom'
-          }`,
+          `Model ${room.aiConfig.Model || 'Custom'}`,
           `ASR ${
             room.aiConfig['Provider.ASR'] === Provider.Byteplus
               ? room.aiConfig.SeedAsrVersion === '2.0'
@@ -212,14 +223,26 @@ function AISettings() {
               : getAsrVendorLabel(room.aiConfig['Provider.ASR'])
           }`,
           room.aiConfig['Provider.Avatar'] !== Provider.None
-            ? `Avatar ${`${utils.capitalizeFirstLetter(room.aiConfig.avatar).substring(0, 12)}...`}`
+            ? `Avatar ${room.aiConfig.avatar}`
             : void 0,
         ].filter(Boolean);
   })();
 
   const handleScene = (next: SCENE) => {
     setScene(next);
-    setData((prev) => ({ ...prev, ...getSceneSettings(next) }));
+    setData((prev) => {
+      const preset = getSceneSettings(next);
+      return {
+        ...prev,
+        ...preset,
+        ...(preset['Provider.LLM'] === Provider.Byteplus &&
+        prev['Provider.LLM'] !== Provider.Byteplus
+          ? { endPointId: ModelMap[Provider.Byteplus][ModelNames.Seed21Turbo].endPointId }
+          : preset['Provider.LLM'] === Provider.Byteplus
+          ? { Model: prev.Model }
+          : {}),
+      };
+    });
   };
 
   const handleClick = () => {
@@ -235,6 +258,18 @@ function AISettings() {
     };
 
   const handleUpdateConfig = async () => {
+    if (!isRealTimeCallMode() && (!data.endPointId || data.endPointId === 'Your model ID')) {
+      Message.error('Enter a model endpoint ID before applying the configuration.');
+      return;
+    }
+    if (data['Provider.LLM'] === Provider.CustomLLM) {
+      try {
+        if (new URL(data.CustomModelURL || '').protocol !== 'https:') throw new Error();
+      } catch {
+        Message.error('Enter an HTTPS URL for the custom model.');
+        return;
+      }
+    }
     setLoading(true);
     const previous = getConfigSnapshot();
     const previousScene = room.scene;
@@ -251,6 +286,7 @@ function AISettings() {
         dispatch(updateAIConfig(payload));
         await RtcClient.updateAgent();
         dispatch(clearHistoryMsg());
+        dispatch(updateIsShowSubtitle(payload['Provider.Avatar'] === Provider.None));
       }
       dispatch(updateScene(scene));
       setOpen(false);
@@ -275,7 +311,7 @@ function AISettings() {
     <>
       <div className={styles.wrapper}>
         <div className={styles.header}>
-          <div className={styles.title}>AI Character</div>
+          <div className={styles.title}>AI character setting</div>
         </div>
         <div className={styles.infos}>
           {infos.map((info) => (
@@ -356,15 +392,16 @@ function AISettings() {
                 data={formatVoiceTypeOptions(
                   isRealTimeCallMode()
                     ? {
-                        [Provider.OpenAI]: OPENAI_VOICE_TYPE,
+                        [Provider.OpenAI]: { ALLOY: OPENAI_VOICE_TYPE.ALLOY },
                       }
                     : {
                         [BYTEPLUS_TTS_V2]: BYTE_PLUS_TTS_2_VOICE_TYPE,
                         [BYTEPLUS_TTS_V1]: BYTE_PLUS_VOICE_TYPE,
                         [Provider.OpenAI]: OPENAI_VOICE_TYPE,
                         [Provider.Amazon]: AMAZON_VOICE_TYPE,
-                        [Provider.Google]: GOOGLE_VOICE_TYPE,
-                      }
+                        [Provider.Google]: getGoogleSceneVoices(scene),
+                      },
+                  scene
                 )}
                 moreProps={{
                   icon: <IconSwap style={{ fontSize: '16px' }} />,
@@ -409,25 +446,28 @@ function AISettings() {
               <TitleCard title="LLM" size="mini">
                 <CheckBoxSelector
                   label="LLM Models"
-                  data={formatModelTypeOptions({
-                    ...ModelMap,
-                    [Provider.Byteplus]: {
-                      ModelArk: {
-                        endPointId:
-                          data['Provider.LLM'] === Provider.Byteplus
-                            ? data.endPointId || 'Your model ID'
-                            : 'Your model ID',
-                        description: 'Configured by server',
-                      },
-                    },
-                  })}
+                  data={formatModelTypeOptions(ModelMap)}
                   moreProps={{
                     icon: <IconSwap style={{ fontSize: '16px' }} />,
                   }}
                   checked={data['Provider.LLM']}
-                  onChange={propsChangedHandler('endPointId')}
+                  onChange={(name) => {
+                    const provider =
+                      (Object.keys(ModelMap) as (keyof typeof ModelMap)[]).find((key) =>
+                        Object.hasOwn(ModelMap[key], name)
+                      ) || Provider.Byteplus;
+                    const models = ModelMap[provider] as Record<string, { endPointId: string }>;
+                    setData((prev) => ({
+                      ...prev,
+                      Model: name,
+                      endPointId:
+                        name === prev.Model ? prev.endPointId : models[name]?.endPointId || '',
+                      VisionEnable: isVisionMode(name),
+                      'Provider.LLM': provider,
+                    }));
+                  }}
                   onChecked={propsChangedHandler('Provider.LLM')}
-                  value={data.endPointId}
+                  value={data.Model}
                   placeHolder="Please select the model you prefer"
                 />
               </TitleCard>
@@ -487,6 +527,15 @@ function AISettings() {
                 placeHolder="Please select the vendor you need"
               />
             </TitleCard>
+            {data['Provider.Avatar'] === Provider.Akool && (
+              <TitleCard title="Avatar ID">
+                <Input
+                  value={data.avatar}
+                  onChange={propsChangedHandler('avatar')}
+                  placeholder="Enter an Akool avatar ID"
+                />
+              </TitleCard>
+            )}
             {!isRealTimeCallMode() && (
               <TitleCard
                 title={
@@ -494,10 +543,18 @@ function AISettings() {
                 }
               >
                 <Input
-                  readOnly={data['Provider.LLM'] === Provider.Byteplus}
                   value={data.endPointId === 'Your model ID' ? '' : data.endPointId}
-                  placeholder="Configured by server"
+                  placeholder="Enter the model endpoint ID"
                   onChange={propsChangedHandler('endPointId')}
+                />
+              </TitleCard>
+            )}
+            {data['Provider.LLM'] === Provider.CustomLLM && (
+              <TitleCard title="Model URL">
+                <Input
+                  value={data.CustomModelURL}
+                  onChange={propsChangedHandler('CustomModelURL')}
+                  placeholder="https://example.com/v1/chat/completions"
                 />
               </TitleCard>
             )}

@@ -1,13 +1,15 @@
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import { Icon, Name, SCENES, SCENE_TAG, getSceneSettings } from '@/config/scene';
-import { updateAIConfig, updateScene } from '@/store/slices/room';
+import { updateAIConfig, updateScene, updateIsShowSubtitle } from '@/store/slices/room';
+import { ModelMap, ModelNames } from '@/config/voiceChat/llm';
+import { Provider } from '@/config/basic';
 import { isRealTimeCallMode } from '@/app/base';
 import CheckScene from './CheckScene';
 import styles from './index.module.less';
 
 function AIChangeCard() {
-  const scene = useSelector((state: RootState) => state.room.scene);
+  const { scene, aiConfig } = useSelector((state: RootState) => state.room);
   const dispatch = useDispatch();
   return (
     <div className={styles.card}>
@@ -31,8 +33,21 @@ function AIChangeCard() {
               tag={SCENE_TAG[key]}
               checked={scene === key}
               onClick={() => {
-                dispatch(updateAIConfig(getSceneSettings(key)));
+                dispatch(
+                  updateAIConfig({
+                    ...getSceneSettings(key),
+                    ...(aiConfig['Provider.LLM'] !== Provider.Byteplus
+                      ? {
+                          endPointId:
+                            ModelMap[Provider.Byteplus][ModelNames.Seed21Turbo].endPointId,
+                        }
+                      : { Model: aiConfig.Model }),
+                  })
+                );
                 dispatch(updateScene(key));
+                dispatch(
+                  updateIsShowSubtitle(getSceneSettings(key)['Provider.Avatar'] === Provider.None)
+                );
               }}
             />
           ))}
