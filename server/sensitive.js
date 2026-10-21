@@ -124,7 +124,7 @@ const VOICE_CHAT_MODE = {
   },
   TTSConfig: {
     ProviderParams: {
-      byteplus_Bidirectional_streaming: {
+      BytePlus: {
         app: {
           /**
            * @note App ID obtained on BytePlus Text-to-Speech Console, used to identify the application.
@@ -241,7 +241,10 @@ const injectSensitiveInfo = (body, isVoiceChatMode) => {
     if (body?.Config?.TTSConfig?.ProviderParams) {
       body.Config.TTSConfig.ProviderParams = merge(
         body.Config?.TTSConfig?.ProviderParams,
-        VOICE_CHAT_MODE.TTSConfig.ProviderParams[body.Config?.TTSConfig?.Provider]
+        VOICE_CHAT_MODE.TTSConfig.ProviderParams[
+          body.Config.TTSConfig.Provider === 'byteplus_Bidirectional_streaming'
+            ? 'BytePlus' : body.Config.TTSConfig.Provider
+        ]
       );
     }
     if (body?.Config?.LLMConfig) {

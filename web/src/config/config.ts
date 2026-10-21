@@ -268,6 +268,7 @@ export class ConfigFactory {
       UserId: this.UserId,
       TaskId: this.UserId,
       AgentConfig: {
+        EnableConversationStateCallback: true,
         /**
          * @note UserId of the client
          */

@@ -58,7 +58,7 @@ function validateProviderConfig(action, body, env) {
       GoogleV2: [...google, 'GOOGLE_RECOGNIZER_PATH'],
     }[config?.ASRConfig?.Provider] || []));
     fields.push(...({
-      byteplus_Bidirectional_streaming: speech, amazon, Google: google,
+      BytePlus: speech, byteplus_Bidirectional_streaming: speech, amazon, Google: google,
       openai: ['OPENAI_API_KEY'],
     }[config?.TTSConfig?.Provider] || []));
     if (config?.LLMConfig?.Mode === 'BytePlusArk') fields.push('BYTEPLUS_MODEL_API_KEY');
@@ -69,6 +69,10 @@ function validateProviderConfig(action, body, env) {
     if (config?.WebSearchAgentConfig?.Enable === true) fields.push('ASKECHO_API_KEY');
   } else {
     fields.push('OPENAI_API_KEY');
+  }
+  const avatar = isVoiceChatMode(action) ? body?.Config?.AvatarConfig : body?.AvatarConfig;
+  if (avatar?.Enabled) {
+    fields.push(...(avatar.Provider === 'Akool' ? ['AKOOL_API_KEY'] : ['AVATAR_APP_ID', 'AVATAR_TOKEN']));
   }
   for (const field of new Set(fields)) required(env[field], field);
 }

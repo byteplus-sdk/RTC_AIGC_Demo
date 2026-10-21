@@ -169,7 +169,7 @@ export class TTSManager {
 
   #paramsMap: {
     [Provider.Byteplus]: {
-      Provider: 'byteplus_Bidirectional_streaming';
+      Provider: 'BytePlus';
       ProviderParams: {
         app: {
           /**
@@ -187,7 +187,7 @@ export class TTSManager {
            */
           voice_type: BYTE_PLUS_VOICE_TYPE | BYTE_PLUS_TTS_2_VOICE_TYPE;
         };
-        resourceId: 'volc.service_type.1000009' | 'seed-tts-2.0';
+        ResourceId: 'volc.service_type.1000009' | 'seed-tts-2.0';
       };
     };
     [Provider.Amazon]: {
@@ -259,13 +259,13 @@ export class TTSManager {
   constructor() {
     this.#paramsMap = {
       [Provider.Byteplus]: {
-        Provider: 'byteplus_Bidirectional_streaming',
+        Provider: 'BytePlus',
         ProviderParams: {
           app: {},
           audio: {
             voice_type: BYTE_PLUS_TTS_2_VOICE_TYPE.Pearl,
           },
-          resourceId: 'seed-tts-2.0',
+          ResourceId: 'seed-tts-2.0',
         },
       },
       [Provider.Amazon]: {
@@ -308,7 +308,7 @@ export class TTSManager {
     switch (this.provider) {
       case Provider.Byteplus: {
         const bp = this.#paramsMap[this.provider].ProviderParams;
-        bp.resourceId =
+        bp.ResourceId =
           this.seedTtsVersion === '2.0' ? 'seed-tts-2.0' : 'volc.service_type.1000009';
         if (bp.audio) {
           const isTts1 =

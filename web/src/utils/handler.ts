@@ -4,6 +4,7 @@
  */
 
 import { useDispatch } from 'react-redux';
+import { Message } from '@arco-design/web-react';
 import logger from './logger';
 import {
   setHistoryMsg,
@@ -84,7 +85,11 @@ export const useMessageHandler = () => {
 
   const maps = {
     [MESSAGE_TYPE.BRIEF]: (parsed: AnyRecord) => {
-      const { Stage } = parsed || {};
+      const { Stage, ErrorInfo } = parsed || {};
+      if (ErrorInfo) {
+        logger.error('VoiceChat', ErrorInfo.ErrorCode, ErrorInfo.Reason);
+        Message.error(`VoiceChat ${ErrorInfo.ErrorCode}: ${ErrorInfo.Reason}`);
+      }
       const { Code, Description } = Stage || {};
       logger.debug(Code, Description);
       switch (Code) {

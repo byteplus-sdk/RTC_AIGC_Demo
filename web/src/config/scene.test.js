@@ -4,6 +4,8 @@ import { SCENE, getSceneSettings } from './scene';
 import { ModelNames, THINKING_TYPE, isVisionMode, isDeepThinkingMode } from './voiceChat/llm';
 import { AKOOL_AVATAR_TYPE } from './voiceChat/avatar';
 import { getSettings } from './settings';
+import { VoiceChatManager } from './voiceChat';
+import { BYTE_PLUS_TTS_2_VOICE_TYPE, BYTE_PLUS_VOICE_TYPE } from './voiceChat/tts';
 import reducer, { updateAIConfig } from '@/store/slices/room';
 
 jest.mock('@byteplus/rtc', () => ({
@@ -146,3 +148,39 @@ test('Google and custom model selections produce their own request endpoints', (
     Url: 'https://example.com/chat/completions',
   });
 });
+
+test('agent startup enables conversation state callbacks', () => {
+  expect(config.config.AgentConfig.EnableConversationStateCallback).toBe(true);
+});
+
+test('Seed TTS uses the BytePlus provider contract', () => {
+  config['Provider.TTS'] = Provider.Byteplus;
+  expect(config.config.Config.TTSConfig).toMatchObject({
+    Provider: 'BytePlus', ProviderParams: { ResourceId: 'seed-tts-2.0' },
+  });
+});
+
+
+test.each([Provider.None, Provider.Byteplus, Provider.Akool])(
+  'Seed TTS resources and subtitles follow version changes with avatar %s',
+  (avatarProvider) => {
+    const manager = new VoiceChatManager();
+    manager.avatar.provider = avatarProvider;
+    for (const [version, voice, resource] of [
+      ['2.0', BYTE_PLUS_TTS_2_VOICE_TYPE.Pearl, 'seed-tts-2.0'],
+      ['1.0', BYTE_PLUS_VOICE_TYPE.Luna, 'volc.service_type.1000009'],
+      ['2.0', BYTE_PLUS_TTS_2_VOICE_TYPE.Vivi, 'seed-tts-2.0'],
+    ]) {
+      manager.tts.seedTtsVersion = version;
+      manager.voice = voice;
+      const { Config } = JSON.parse(JSON.stringify(manager.config));
+      expect(Config.TTSConfig).toEqual({
+        Provider: 'BytePlus',
+        ProviderParams: { app: {}, audio: { voice_type: voice }, ResourceId: resource },
+      });
+      expect(Config.SubtitleConfig.SubtitleMode).toBe(
+        avatarProvider !== Provider.None || version === '2.0' ? 1 : 0
+      );
+    }
+  }
+);
