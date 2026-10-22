@@ -90,6 +90,13 @@ Refer to [OpenAPI Updates](https://docs.byteplus.com/en/docs/byteplus-rtc/docs-1
 
 ### Release Notes
 
+#### [1.5.0]
+- 2026-10-22
+    - Refresh the UI with scene presets, multilingual voices, screen reading, and AI tutor avatars.
+    - Add model configuration, deep thinking, vision input selection, web search, and MCP settings.
+    - Upgrade the RTC Web SDK to 4.69.3 and add a configurable session timer.
+    - Align provider parameters, credentials, and avatar configuration with the VoiceChat APIs; add request contract tests.
+
 #### [1.4.0]
 - 2026-07-29
     - Support Akool digital human

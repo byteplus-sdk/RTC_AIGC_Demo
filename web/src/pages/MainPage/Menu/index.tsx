@@ -10,6 +10,7 @@ import Deepthinking from './components/Deepthinking';
 import { isDeepThinkingMode } from '@/config/voiceChat/llm';
 import McpHomeBlock from './components/McpHomeBlock';
 import styles from './index.module.less';
+import demoPackage from '../../../../package.json';
 
 function Menu() {
   const { isJoined, roomId, aiConfig } = useSelector((state: RootState) => state.room);
@@ -38,7 +39,7 @@ function Menu() {
         <div className={styles.bold}>
           Mode <Tag size="small">{isRealTimeCallMode() ? 'REALTIME' : 'FLEXIBLE'}</Tag>
         </div>
-        <div className={styles.bold}>Demo version 1.4.0</div>
+        <div className={styles.bold}>Demo version {demoPackage.version}</div>
         <div className={styles.bold}>SDK version {BytePlusRTC.getSdkVersion()}</div>
         {isJoined && (
           <div className={styles.gray}>
