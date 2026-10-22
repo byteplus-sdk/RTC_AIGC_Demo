@@ -188,7 +188,7 @@ function runCLI(config, args, input, spawnImpl = spawn, signal) {
         const envelope = parseCLIError(stdout) || parseCLIError(stderr);
         const typed = envelope?.error;
         const detail = typed?.message
-          ? `${typed.code ? `${typed.code}: ` : ''}${typed.message}`
+          ? `${typed.code ? `${typed.code}: ` : ''}${typed.message}${typeof typed.hint === 'string' ? `. ${typed.hint}` : ''}`
           : `byteplus-rtc ${args.slice(0, 2).join(' ')} failed`;
         reject(new Error(detail));
         return;
@@ -314,7 +314,19 @@ function createApp(options = {}) {
     if (ctx.method === 'POST' && ctx.path === '/preflight') {
       const action = ctx.request.query.action;
       if (!AGENT_ACTIONS.has(action) || !action.startsWith('Start')) ctx.throw(400, 'unsupported preflight action');
-      ctx.body = await preflight(action, ctx.request.body, env, { validate: validateProviderConfig, probe: probeSpeech });
+      if (config.mode === 'cli') {
+        if (!isVoiceChatMode(action)) {
+          ctx.body = { ready: false, issues: [{ stage: 'configuration', message: 'CLI mode supports Flexible VoiceChat. Configure direct OpenAPI credentials for Realtime mode.' }] };
+          return;
+        }
+        try {
+          ctx.body = await runCLI(config, ['agent', 'check', '--runtime-request-stdin'], ctx.request.body, options.spawnImpl, controller.signal);
+        } catch (error) {
+          ctx.body = { ready: false, issues: [{ stage: 'configuration', message: error.message }] };
+        }
+      } else {
+        ctx.body = await preflight(action, ctx.request.body, config.env, { validate: validateProviderConfig, probe: probeSpeech });
+      }
       return;
     }
     if (ctx.method === 'GET' && ctx.path === '/runtimeConfig') {

@@ -193,3 +193,22 @@ test('shutdown abort terminates an active CLI process', async () => {
   await assert.rejects(pending, /failed/);
   assert.equal(killed, 'SIGKILL');
 });
+
+test('CLI preflight delegates selected configuration without creating a task', async t => {
+ const {createApp}=require('./app');const fetch=require('node-fetch');
+ let args;
+ const app=createApp({config:cliConfig(),spawnImpl:successfulSpawn({ready:true,issues:[]},call=>{args=call.args;})});
+ const server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));
+ t.after(()=>new Promise(resolve=>server.close(resolve)));
+ const response=await fetch(`http://127.0.0.1:${server.address().port}/preflight?action=StartVoiceChat`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({Config:{LLMConfig:{Provider:'BytePlus',EndPointId:'selected'}}})});
+ assert.equal((await response.json()).ready,true);assert.deepEqual(args,['--format=json','agent','check','--runtime-request-stdin']);
+});
+
+test('CLI preflight returns credential issues and discards raw stderr', async t => {
+ const {createApp}=require('./app');const fetch=require('node-fetch');
+ const app=createApp({config:cliConfig(),spawnImpl:failedSpawn({ok:false,error:{code:'byteplus-rtc.agent.missing_config',message:'AKOOL_API_KEY is required'}})});
+ const server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));
+ t.after(()=>new Promise(resolve=>server.close(resolve)));
+ const response=await fetch(`http://127.0.0.1:${server.address().port}/preflight?action=StartVoiceChat`,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+ const result=await response.json();assert.equal(result.ready,false);assert.match(result.issues[0].message,/AKOOL_API_KEY/);assert.doesNotMatch(JSON.stringify(result),/secret-material/);
+});
