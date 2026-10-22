@@ -2,6 +2,30 @@
 
 Demo Online: https://demo.byteplus.com/rtc/solution/aigc
 
+## RTC CLI integration
+
+The `feat/rtc-cli-integration` branch is also an remote template for
+`byteplus-rtc`. It keeps this Demo's UI and provider controls while adding a
+local companion server that can delegate RTC token issuance and VoiceChat
+Start/Stop to the authenticated CLI.
+
+```shell
+byteplus-rtc init --scene voice-agent --platform web
+cd <generated-project>
+byteplus-rtc auth login --browser=open
+byteplus-rtc dev
+```
+
+Copy `.env.example` to `.env.local` and provide the RTC AppID plus the selected
+model endpoint, model API-key resource ID, and speech application ID. Do not commit `.env.local`. When BytePlus
+AK/SK are absent, the server uses the CLI's isolated Signin session. When both
+AK/SK variables are present, the server signs BytePlus OpenAPI directly. RTC
+tokens use `GetToken` Version `2025-06-01`; an RTC AppKey is optional.
+
+In CLI mode, raw model and speech credentials are exchanged only inside the
+short-lived `byteplus-rtc` process. The Node server receives selectors and the
+final RTC request result, not the exchanged credentials.
+
 ## Introduction
 - In the AIGC conversation scenario, the Volcengine AIGC - RTC Server cloud service provides an end - to - end AIGC capability link based on streaming voice by integrating RTC audio and video stream processing, ASR voice recognition, large - model interface call integration, and TTS voice generation capabilities.
 - Users only need to call the standard - based OpenAPI interfaces to configure the required ASR, LLM, and TTS types and parameters. The Volcengine cloud computing service is responsible for edge user access, cloud resource scheduling, audio and video stream compression, text - to - voice conversion processing, and data subscription and transmission. This simplifies the development process, allowing developers to focus more on the training and debugging of the core capabilities of large models, thus rapidly promoting the innovation of AIGC product applications.
@@ -18,7 +42,7 @@ cp .env.example .env.local
 
 Fill in `.env.local` following the comments in [.env.example](.env.example):
 
-- **Both modes:** `RTC_APP_ID`, `RTC_APP_KEY`, `BYTEPLUS_ACCESS_KEY_ID`, `BYTEPLUS_SECRET_ACCESS_KEY`.
+- **Both modes:** `RTC_APP_ID`. Direct OpenAPI mode also requires `BYTEPLUS_ACCESS_KEY_ID` and `BYTEPLUS_SECRET_ACCESS_KEY`.
 - **Realtime:** add `OPENAI_API_KEY`.
 - **Flexible:** choose ASR, LLM and TTS providers in the UI, then fill their credential groups. Custom LLM uses `CUSTOM_LLM_API_KEY`, falling back to `OPENAI_API_KEY`.
 - **Optional features:** fill search or avatar credentials when enabled.
@@ -32,16 +56,16 @@ Enable the selected ASR/TTS services for your BytePlus speech application.
 
 ## Quick Start
 
-Start the server and web application in Realtime mode:
+Start the server and web application in Flexible mode:
 
 ```shell
 npm run dev
 ```
 
-For Flexible mode:
+For Realtime mode:
 
 ```shell
-npm run dev:flexible
+npm run dev:realtime
 ```
 
 Open http://localhost:3000. The API server runs at http://localhost:3001.
