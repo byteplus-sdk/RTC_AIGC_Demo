@@ -1,0 +1,78 @@
+.card {
+  position: relative;
+  text-align: center;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+
+  .avatar {
+    img {
+      width: 128px;
+      height: 128px;
+    }
+
+    border-radius: 50%;
+    width: 128px;
+    height: 128px;
+    background: var(--bg-gradient-card);
+  }
+
+  .title {
+    font-weight: 500;
+    font-size: 24px;
+    line-height: 32px;
+    color: var(--text-quaternary);
+  }
+
+  .desc {
+    margin-top: 8px;
+    font-weight: 400;
+    font-size: 14px;
+    line-height: 22px;
+    color: var(--text-tertiary);
+  }
+
+  .exceededTitle {
+    font-weight: 500;
+    font-size: 24px;
+    line-height: 32px;
+    background: var(--brand-gradient-change);
+    background-clip: text;
+    color: transparent;
+    cursor: pointer;
+
+    img {
+      margin-left: 4px;
+    }
+  }
+
+  .sceneContainer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+  }
+}
+@media (max-width: 1100px) {
+  .card .title {
+    font-size: 20px;
+    line-height: 28px;
+  }
+}
+@media (max-width: 767px) {
+  .card {
+    gap: 20px;
+    .title {
+      font-size: 18px;
+      line-height: 26px;
+    }
+    .avatar,
+    .avatar img {
+      width: 96px;
+      height: 96px;
+    }
+  }
+}

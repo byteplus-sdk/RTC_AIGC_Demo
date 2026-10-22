@@ -1,0 +1,352 @@
+.wrapper {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  box-sizing: border-box;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: center;
+  cursor: pointer;
+
+  .content {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 1;
+    gap: 3px;
+
+    .icon {
+      border-radius: 50%;
+      width: 55px;
+      height: max-content;
+    }
+
+    .checked-text {
+      font-size: 13px;
+      line-height: 22px;
+      width: 100px;
+    }
+  }
+}
+
+.wrapper:hover {
+  box-shadow: 0px 5px 6px 0px rgba(82, 102, 133, 0.15);
+}
+
+.wrapper::after {
+  content: '';
+  position: absolute;
+  border-radius: 11px;
+  top: 1px;
+  left: 1px;
+  width: 100%;
+  height: 100px;
+  background: var(--bg-primary);
+}
+
+.wrapper::before {
+  content: '';
+  position: absolute;
+  border-radius: 12px;
+  top: 0px;
+  left: 0px;
+  width: 102px;
+  height: 102px;
+  background: linear-gradient(
+    99.97deg,
+    rgba(22, 100, 255, 0.2) 20.8%,
+    rgba(132, 97, 251, 0.2) 100.66%
+  );
+}
+
+.active {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  box-sizing: border-box;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: center;
+  cursor: pointer;
+
+  .checkIcon {
+    position: absolute;
+    bottom: -1px;
+    right: -1px;
+    z-index: 2;
+    width: 20px;
+    height: 20px;
+  }
+
+  .content {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 1;
+    gap: 3px;
+
+    .icon {
+      border-radius: 50%;
+      width: 55px;
+      height: max-content;
+    }
+
+    .checked-text {
+      background: var(--brand-gradient);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 22px;
+      width: 100px;
+    }
+  }
+}
+
+.active:hover {
+  box-shadow: 0px 5px 6px 0px rgba(82, 102, 133, 0.15);
+}
+
+.active::after {
+  content: '';
+  position: absolute;
+  border-radius: 11px;
+  top: 1px;
+  left: 1px;
+  width: 100%;
+  height: 100px;
+  background: var(--bg-primary);
+}
+
+.active::before {
+  content: '';
+  position: absolute;
+  border-radius: 12px;
+  top: 0px;
+  left: 0px;
+  width: 102px;
+  height: 102px;
+  background: var(--brand-gradient-icon);
+}
+
+.blur {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  box-sizing: border-box;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: center;
+  cursor: pointer;
+
+  .content {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 1;
+    gap: 3px;
+
+    .icon {
+      border-radius: 50%;
+      width: 55px;
+      height: max-content;
+      opacity: 0.5;
+    }
+
+    .checked-text {
+      font-size: 13px;
+      line-height: 22px;
+      width: 100px;
+    }
+  }
+}
+
+.blur:hover {
+  box-shadow: 0px 5px 6px 0px rgba(82, 102, 133, 0.15);
+}
+body[arco-theme='dark'] {
+  .wrapper:hover::after,
+  .active:hover::after,
+  .horizontal.wrapper:hover::after,
+  .horizontal.active:hover::after {
+    background: #000;
+  }
+
+  .blur:hover::after,
+  .horizontal.blur:hover::after {
+    background: #000;
+    opacity: 1;
+  }
+}
+
+.blur::after {
+  content: '';
+  position: absolute;
+  border-radius: 11px;
+  top: 1px;
+  left: 1px;
+  width: 100%;
+  height: 100px;
+  background: var(--bg-primary);
+  opacity: 0.8;
+}
+
+.blur::before {
+  content: '';
+  position: absolute;
+  border-radius: 12px;
+  top: 0px;
+  left: 0px;
+  width: 100px;
+  height: 100px;
+  border: dashed 1px rgba(132, 97, 251, 0.2);
+}
+
+.tag {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 3;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 18px;
+  transform: translate(1px, 1px);
+  background: rgba(134, 123, 227, 1);
+  padding: 0 6px;
+  border-radius: 9px 9px 0;
+  color: white;
+}
+
+.horizontal {
+  width: 200px;
+  height: 76px;
+
+  .content {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+  }
+
+  .icon {
+    width: 44px;
+    height: max-content;
+    margin-left: 16px;
+    margin-right: 8px;
+  }
+
+  &.wrapper::after {
+    content: '';
+    position: absolute;
+    border-radius: 11px;
+    top: 1px;
+    left: 1px;
+    width: 100%;
+    height: 76px;
+    background: var(--bg-primary);
+  }
+
+  &.wrapper::before {
+    content: '';
+    position: absolute;
+    border-radius: 12px;
+    top: 0;
+    left: 0;
+    width: 202px;
+    height: 78px;
+    background: linear-gradient(100deg, rgba(22, 100, 255, 20%) 20%, rgba(132, 97, 251, 20%) 100%);
+  }
+
+  &.active::after {
+    content: '';
+    position: absolute;
+    border-radius: 11px;
+    top: 1px;
+    left: 1px;
+    width: 100%;
+    height: 76px;
+    background: var(--bg-primary);
+  }
+
+  &.active::before {
+    content: '';
+    position: absolute;
+    border-radius: 12px;
+    top: 0;
+    left: 0;
+    width: 202px;
+    height: 78px;
+    background: var(--brand-gradient-icon);
+  }
+}
+
+.diamond {
+  position: absolute;
+  top: 50%;
+  right: -16px;
+  transform: translate(50%, -50%) rotate(-45deg);
+  width: 12px;
+  height: 12px;
+  background-color: var(--bg-primary);
+  border: solid rgba(109, 97, 252, 37%);
+  border-width: 1px 0 0 1px;
+  border-radius: 3px 0 0;
+  z-index: 1;
+}
+
+.wrapper,
+.active {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+}
+.horizontal {
+  max-width: 100%;
+}
+@media (max-width: 767px) {
+  .horizontal {
+    width: 100%;
+  }
+}
+
+@media (max-width: 767px) {
+  .horizontal {
+    &::before {
+      width: 100% !important;
+      height: 100% !important;
+    }
+    &::after {
+      width: calc(100% - 2px) !important;
+      height: calc(100% - 2px) !important;
+    }
+    .content .icon {
+      width: 36px;
+      margin-left: 8px;
+      margin-right: 4px;
+    }
+    .content .checked-text {
+      width: auto;
+      font-size: 12px;
+      line-height: 18px;
+      padding-right: 4px;
+    }
+  }
+}

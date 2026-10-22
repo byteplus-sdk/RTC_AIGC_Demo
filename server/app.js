@@ -8,6 +8,7 @@ const bodyParser = require('koa-bodyparser');
 const cors = require('koa2-cors');
 const { Signer } = require('@byteplus/vcloud-sdk-nodejs');
 const fetch = require('node-fetch');
+const { getLlmCredentialField, getLlmApiKey } = require('./providerConfig');
 const { createAgentLifecycle } = require('./agentLifecycle');
 if (require.main === module) {
   require('dotenv').config({ path: require('path').resolve(__dirname, '../.env.local') });
@@ -53,20 +54,33 @@ function validateProviderConfig(action, body, env) {
   if (isVoiceChatMode(action)) {
     const config = body?.Config;
     fields.push(...({
-      BytePlus: speech, amazon, google, Google: google,
+      BytePlus: speech, Amazon: amazon, amazon, google, Google: google,
       GoogleV2: [...google, 'GOOGLE_RECOGNIZER_PATH'],
     }[config?.ASRConfig?.Provider] || []));
     fields.push(...({
-      byteplus_Bidirectional_streaming: speech, amazon, Google: google,
-      openai: ['OPENAI_API_KEY'],
+      BytePlus: speech, byteplus_Bidirectional_streaming: speech, Amazon: amazon, amazon, Google: google,
+      OpenAI: ['OPENAI_API_KEY'], openai: ['OPENAI_API_KEY'],
     }[config?.TTSConfig?.Provider] || []));
-    if (config?.LLMConfig?.Mode === 'BytePlusArk') fields.push('BYTEPLUS_MODEL_API_KEY');
-    if (config?.LLMConfig?.Mode === 'CustomLLM') {
-      required(env.CUSTOM_LLM_API_KEY || env.OPENAI_API_KEY, 'CUSTOM_LLM_API_KEY or OPENAI_API_KEY');
+    if (config?.LLMConfig) {
+      const field = getLlmCredentialField(config.LLMConfig);
+      required(getLlmApiKey(config.LLMConfig, env), field === 'CUSTOM_LLM_API_KEY' ? 'CUSTOM_LLM_API_KEY or OPENAI_API_KEY' : field);
     }
-    if (config?.WebSearchAgentConfig?.Enable === true) fields.push('ASKECHO_API_KEY');
+    if (config?.WebSearchAgentConfig?.Enable === true) {
+      fields.push('ASKECHO_API_KEY');
+      required(env.ASKECHO_API_KEY, 'ASKECHO_API_KEY');
+      const params = JSON.parse(config.WebSearchAgentConfig.ParamsString || '{}');
+      required(env.ASKECHO_BOT_ID || params.bot_id, 'ASKECHO_BOT_ID');
+      const name = config.WebSearchAgentConfig.FunctionName || 'WebSearch';
+      if (config.LLMConfig?.MCP?.some((item) => item.Name === name)) {
+        throw new Error(`MCP name conflicts with web search: ${name}`);
+      }
+    }
   } else {
     fields.push('OPENAI_API_KEY');
+  }
+  const avatar = isVoiceChatMode(action) ? body?.Config?.AvatarConfig : body?.AvatarConfig;
+  if (avatar?.Enabled) {
+    fields.push(...(avatar.Provider === 'Akool' ? ['AKOOL_API_KEY'] : ['AVATAR_APP_ID', 'AVATAR_TOKEN']));
   }
   for (const field of new Set(fields)) required(env[field], field);
 }

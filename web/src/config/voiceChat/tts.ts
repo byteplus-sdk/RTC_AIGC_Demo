@@ -12,6 +12,7 @@ import type { SeedVersion } from './seedVersion';
  * @refer https://console.byteplus.com/voice/service/1000014
  */
 export enum BYTE_PLUS_VOICE_TYPE {
+  Cantonese = 'zh_female_yueyunv_mars_bigtts',
   Luna = 'zh_female_cancan_mars_bigtts',
   Edward = 'zh_male_baqiqingshu_mars_bigtts',
   Emma = 'zh_female_wenroushunv_mars_bigtts',
@@ -103,17 +104,14 @@ export const getSeedTtsVersionFromVoice = (voiceType: IVoiceType): SeedVersion =
 /**
  * @brief OpenAI Voice Type
  * @refer https://platform.openai.com/docs/guides/text-to-speech#voice-options
- * @note Only support Alloy now.
  */
 export enum OPENAI_VOICE_TYPE {
   ALLOY = 'alloy',
-  // ASH = 'ash',
-  // BALLAD = 'ballad',
-  // CORAL = 'coral',
-  // ECHO = 'echo',
-  // SAGE = 'sage',
-  // SHIMMER = 'shimmer',
-  // VERSE = 'verse',
+  ECHO = 'echo',
+  FABLE = 'fable',
+  NOVA = 'nova',
+  ONYX = 'onyx',
+  SHIMMER = 'shimmer',
 }
 
 /**
@@ -122,6 +120,8 @@ export enum OPENAI_VOICE_TYPE {
  * @note Only support Matthew now.
  */
 export enum AMAZON_VOICE_TYPE {
+  ADITI = 'Aditi',
+  TATYANA = 'Tatyana',
   MATTHEW = 'Matthew',
 }
 
@@ -169,7 +169,7 @@ export class TTSManager {
 
   #paramsMap: {
     [Provider.Byteplus]: {
-      Provider: 'byteplus_Bidirectional_streaming';
+      Provider: 'BytePlus';
       ProviderParams: {
         app: {
           /**
@@ -187,11 +187,11 @@ export class TTSManager {
            */
           voice_type: BYTE_PLUS_VOICE_TYPE | BYTE_PLUS_TTS_2_VOICE_TYPE;
         };
-        resourceId: 'volc.service_type.1000009' | 'seed-tts-2.0';
+        ResourceId: 'volc.service_type.1000009' | 'seed-tts-2.0';
       };
     };
     [Provider.Amazon]: {
-      Provider: Provider.Amazon;
+      Provider: 'Amazon';
       ProviderParams: {
         /**
          * @note Injected by server, refer to Server/sensitive.js.
@@ -215,7 +215,7 @@ export class TTSManager {
       };
     };
     [Provider.OpenAI]: {
-      Provider: Provider.OpenAI;
+      Provider: 'OpenAI';
       ProviderParams: {
         /**
          * @note Fixed value, `https://api.openai.com/v1/audio/speech`.
@@ -234,8 +234,6 @@ export class TTSManager {
          * @refer https://platform.openai.com/docs/guides/text-to-speech#voice-options
          */
         Voice: OPENAI_VOICE_TYPE;
-        Language: 'en-US';
-        Region: 'us-west-2';
         Speed?: string;
       };
     };
@@ -248,7 +246,6 @@ export class TTSManager {
           Name: string;
         };
         StreamingAudioConfig: {
-          SampleRateHertz: number;
           SpeakingRate: number;
         };
       };
@@ -259,17 +256,17 @@ export class TTSManager {
   constructor() {
     this.#paramsMap = {
       [Provider.Byteplus]: {
-        Provider: 'byteplus_Bidirectional_streaming',
+        Provider: 'BytePlus',
         ProviderParams: {
           app: {},
           audio: {
             voice_type: BYTE_PLUS_TTS_2_VOICE_TYPE.Pearl,
           },
-          resourceId: 'seed-tts-2.0',
+          ResourceId: 'seed-tts-2.0',
         },
       },
       [Provider.Amazon]: {
-        Provider: Provider.Amazon,
+        Provider: 'Amazon',
         ProviderParams: {
           VoiceID: VoiceMap[Provider.Amazon].MATTHEW,
           Region: 'us-west-2',
@@ -277,13 +274,11 @@ export class TTSManager {
         },
       },
       [Provider.OpenAI]: {
-        Provider: Provider.OpenAI,
+        Provider: 'OpenAI',
         ProviderParams: {
           // URL: 'https://api.openai.com/v1/audio/speech',
           Model: 'tts-1',
           Voice: VoiceMap[Provider.OpenAI].ALLOY,
-          Language: 'en-US',
-          Region: 'us-west-2',
           Speed: '1.0',
         },
       },
@@ -295,7 +290,6 @@ export class TTSManager {
             Name: VoiceMap[Provider.Google].Aoede,
           },
           StreamingAudioConfig: {
-            SampleRateHertz: 24000,
             SpeakingRate: 1.0,
           },
         },
@@ -308,7 +302,7 @@ export class TTSManager {
     switch (this.provider) {
       case Provider.Byteplus: {
         const bp = this.#paramsMap[this.provider].ProviderParams;
-        bp.resourceId =
+        bp.ResourceId =
           this.seedTtsVersion === '2.0' ? 'seed-tts-2.0' : 'volc.service_type.1000009';
         if (bp.audio) {
           const isTts1 =

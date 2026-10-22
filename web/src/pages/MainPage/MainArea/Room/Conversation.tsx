@@ -13,7 +13,7 @@ import { Provider } from '@/config/basic';
 import { isRealTimeCallMode } from '@/app/base';
 import AIAvatarReadying from '@/components/AIAvatarLoading';
 import USER_AVATAR from '@/assets/img/UserAvatar.png';
-import CUSTOM_AVATAR from '@/assets/img/CustomAvatar.svg';
+import { Icon, Name } from '@/config/scene';
 import styles from './index.module.less';
 
 const lines: (string | React.ReactNode)[] = [];
@@ -24,18 +24,20 @@ function Conversation(props: React.HTMLAttributes<HTMLDivElement>) {
   const msgHistory = room.msgHistory;
   const { userId } = room.localUser;
   const remoteUsers = room.remoteUsers;
-  const { isAITalking, isUserTalking } = useSelector((state: RootState) => state.room);
+  const { isAITalking, isUserTalking, scene, isShowSubtitle } = useSelector(
+    (state: RootState) => state.room
+  );
   const isAIReady = remoteUsers.find(
     (user) => user.userId === Config.BotName || user.userId?.startsWith('voiceChat')
   );
   const containerRef = useRef<HTMLDivElement>(null);
   const lastMsg = msgHistory?.[msgHistory.length - 1];
   const isAvatarScene = Config.AvatarEnable;
-  // Only realtime & byteplus tts are supported; hide subtitles when avatar is enabled.
   const isSupportedSubtitle =
-    !isAvatarScene &&
+    isShowSubtitle &&
     (isRealTimeCallMode() ||
-      (!isRealTimeCallMode() && Config['Provider.TTS'] === Provider.Byteplus));
+      (!isRealTimeCallMode() &&
+        [Provider.Byteplus, Provider.OpenAI, Provider.Google].includes(Config['Provider.TTS'])));
 
   useEffect(() => {
     const container = containerRef.current;
@@ -77,9 +79,9 @@ function Conversation(props: React.HTMLAttributes<HTMLDivElement>) {
             <div key={`msg-container-${index}`} className={styles.mobileLine}>
               <div className={styles.msgName}>
                 <div className={styles.avatar}>
-                  <img src={isUserMsg ? USER_AVATAR : CUSTOM_AVATAR} alt="Avatar" />
+                  <img src={isUserMsg ? USER_AVATAR : Icon[scene]} alt="Avatar" />
                 </div>
-                {isUserMsg ? 'ME' : 'AI'}
+                {isUserMsg ? 'ME' : Name[scene]}
               </div>
               <div
                 className={`${styles.sentence} ${isUserMsg ? styles.user : styles.robot}`}

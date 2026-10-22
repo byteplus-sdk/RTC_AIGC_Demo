@@ -3,17 +3,33 @@
  * SPDX-license-identifier: BSD-3-Clause
  */
 
-import { Button, Drawer, Input } from '@arco-design/web-react';
+import { Button, Drawer, Input, Message, Radio, Tag } from '@arco-design/web-react';
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import isEqual from 'lodash/isEqual';
 import { IconSwap } from '@arco-design/web-react/icon';
-import aigcConfig, { ArkVoiceDescription, ArkTts2VoiceDescription, VendorSVG } from '@/config';
+import { ArkVoiceDescription, ArkTts2VoiceDescription, VendorSVG } from '@/config';
 import { ASR_PROVIDER_OPTIONS, Provider } from '@/config/basic';
 import RtcClient from '@/lib/RtcClient';
-import { clearHistoryMsg, updateAIConfig } from '@/store/slices/room';
+import {
+  clearHistoryMsg,
+  updateIsShowSubtitle,
+  updateAIConfig,
+  updateScene,
+} from '@/store/slices/room';
 import { RootState } from '@/store';
-import AnchorTitle from '../AnchorTitle';
+import CheckIcon from '../CheckIcon';
+import {
+  SCENE,
+  SCENES,
+  LANGUAGE_SCENES,
+  Icon,
+  Name,
+  SCENE_TAG,
+  getSceneSettings,
+} from '@/config/scene';
+import { SCENE_VOICES, getGoogleSceneVoices } from '@/config/sceneVoices';
+import { getSettings, getConfigSnapshot } from '@/config/settings';
 import { ConfigFactory } from '@/config/config';
 import CheckBoxSelector from '../CheckBoxSelector';
 import TitleCard from '../TitleCard';
@@ -38,7 +54,12 @@ import {
   seedAsrVersionFromKey,
   seedTtsVersionFromKey,
 } from '@/config/voiceChat/seedVersion';
-import { ModelMap, isLlmProviderAllowedForWebSearch } from '@/config/voiceChat/llm';
+import {
+  ModelMap,
+  ModelNames,
+  isVisionMode,
+  isLlmProviderAllowedForWebSearch,
+} from '@/config/voiceChat/llm';
 import { AvatarMap, RealtimeAvatarMap } from '@/config/voiceChat/avatar';
 import styles from './index.module.less';
 
@@ -74,13 +95,26 @@ const formatAsrOptions = (options: Provider[]) =>
     icon: VendorSVG[key === BYTEPLUS_ASR_V1 || key === BYTEPLUS_ASR_V2 ? Provider.Byteplus : key],
   }));
 
-const formatVoiceTypeOptions = (options: {
-  [key in Provider]?: { [key: string]: any };
-}) => {
+const formatVoiceTypeOptions = (
+  options: {
+    [key in Provider]?: { [key: string]: any };
+  },
+  scene?: SCENE
+) => {
   return Object.keys(options).reduce<Record<string, ReturnType<typeof formatOptions>>>(
     (acc, key) => {
       const provider = key as Provider;
-      const voices = options[provider];
+      const voices = Object.fromEntries(
+        Object.entries(options[provider] || {}).filter(
+          ([, voice]) =>
+            !scene ||
+            !LANGUAGE_SCENES.includes(scene) ||
+            !SCENE_VOICES[scene]?.length ||
+            SCENE_VOICES[scene].includes(voice) ||
+            (provider === Provider.Google && String(voice).includes('-Chirp3-HD-'))
+        )
+      );
+      if (!Object.keys(voices).length) return acc;
       return {
         ...acc,
         [provider]: (Object.keys(voices || {}) as Provider[]).map((option) => ({
@@ -111,7 +145,7 @@ const formatModelTypeOptions = (options: {
         [provider]: (Object.keys(models || {}) as Provider[]).map((option) => ({
           key: option,
           label: utils.capitalizeFirstLetter(option),
-          value: models![option].endPointId,
+          value: option,
           icon: models![option].icon || VendorSVG[provider || option],
           description: models![option].description || '',
         })),
@@ -148,20 +182,9 @@ function AISettings() {
   const dispatch = useDispatch();
   const room = useSelector((state: RootState) => state.room);
 
-  const getSettings = () => ({
-    'Provider.LLM': aigcConfig['Provider.LLM'],
-    'Provider.TTS': aigcConfig['Provider.TTS'],
-    'Provider.ASR': aigcConfig['Provider.ASR'],
-    'Provider.Avatar': aigcConfig['Provider.Avatar'],
-    avatar: aigcConfig.avatar,
-    voice: aigcConfig.voice,
-    endPointId: aigcConfig.endPointId,
-    WelcomeMessage: aigcConfig.WelcomeMessage,
-    SystemMessages: aigcConfig.SystemMessages,
-    SeedAsrVersion: aigcConfig.SeedAsrVersion,
-    SeedTtsVersion: aigcConfig.SeedTtsVersion,
-  });
-
+  const [scene, setScene] = useState(room.scene);
+  const [sceneMode, setSceneMode] = useState(LANGUAGE_SCENES.includes(room.scene) ? 1 : 0);
+  const [focusInput, setFocusInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<Partial<ConfigFactory>>(getSettings());
@@ -173,28 +196,25 @@ function AISettings() {
       ...AMAZON_VOICE_TYPE,
       ...GOOGLE_VOICE_TYPE,
     };
-    const allModels = {
-      ...ModelMap.BytePlusArk,
-      ...ModelMap.openai,
-    };
     return isRealTimeCallMode()
       ? [
-          `TTS ${Object.keys(OPENAI_VOICE_TYPE).find(
+          `VoiceType ${Object.keys(OPENAI_VOICE_TYPE).find(
             (key) =>
               OPENAI_VOICE_TYPE[key as keyof typeof OPENAI_VOICE_TYPE] === room.aiConfig.voice
           )}`,
           room.aiConfig['Provider.Avatar'] !== Provider.None
-            ? `Avatar ${`${utils.capitalizeFirstLetter(room.aiConfig.avatar).substring(0, 12)}...`}`
+            ? `Avatar ${room.aiConfig.avatar}`
             : void 0,
         ].filter(Boolean)
       : [
-          `TTS ${Object.keys(allVoices).find(
-            (key) => allVoices[key as keyof typeof allVoices] === room.aiConfig.voice
-          )}`,
-          `LLM ${Object.keys(allModels).find(
-            (key) =>
-              allModels[key as keyof typeof allModels].endPointId === room.aiConfig.endPointId
-          )}`,
+          `VoiceType ${
+            Object.keys(allVoices).find(
+              (key) => allVoices[key as keyof typeof allVoices] === room.aiConfig.voice
+            ) ||
+            room.aiConfig.voice ||
+            'Custom'
+          }`,
+          `Model ${room.aiConfig.Model || 'Custom'}`,
           `ASR ${
             room.aiConfig['Provider.ASR'] === Provider.Byteplus
               ? room.aiConfig.SeedAsrVersion === '2.0'
@@ -203,10 +223,27 @@ function AISettings() {
               : getAsrVendorLabel(room.aiConfig['Provider.ASR'])
           }`,
           room.aiConfig['Provider.Avatar'] !== Provider.None
-            ? `Avatar ${`${utils.capitalizeFirstLetter(room.aiConfig.avatar).substring(0, 12)}...`}`
+            ? `Avatar ${room.aiConfig.avatar}`
             : void 0,
         ].filter(Boolean);
   })();
+
+  const handleScene = (next: SCENE) => {
+    setScene(next);
+    setData((prev) => {
+      const preset = getSceneSettings(next);
+      return {
+        ...prev,
+        ...preset,
+        ...(preset['Provider.LLM'] === Provider.Byteplus &&
+        prev['Provider.LLM'] !== Provider.Byteplus
+          ? { endPointId: ModelMap[Provider.Byteplus][ModelNames.Seed21Turbo].endPointId }
+          : preset['Provider.LLM'] === Provider.Byteplus
+          ? { Model: prev.Model }
+          : {}),
+      };
+    });
+  };
 
   const handleClick = () => {
     setOpen(true);
@@ -216,44 +253,66 @@ function AISettings() {
     (key: string, decorator?: (...args: any[]) => any) => (value: string) => {
       setData((prev) => ({
         ...prev,
-        [key]: decorator?.(value) || value,
+        [key]: decorator ? decorator(value) : value,
       }));
     };
 
   const handleUpdateConfig = async () => {
-    if (!isEqual(data, getSettings())) {
-      setLoading(true);
-      const payload: Partial<ConfigFactory> = { ...data };
-      const llmProv = payload['Provider.LLM'] ?? room.aiConfig['Provider.LLM'];
-      if (!isLlmProviderAllowedForWebSearch(llmProv)) {
-        payload.LLMWebSearchEnabled = false;
-      }
-      dispatch(updateAIConfig(payload));
-      await RtcClient.updateAgent();
-      setLoading(false);
-      dispatch(clearHistoryMsg());
+    if (!isRealTimeCallMode() && (!data.endPointId || data.endPointId === 'Your model ID')) {
+      Message.error('Enter a model endpoint ID before applying the configuration.');
+      return;
     }
-    setOpen(false);
+    if (data['Provider.LLM'] === Provider.CustomLLM) {
+      try {
+        if (new URL(data.CustomModelURL || '').protocol !== 'https:') throw new Error();
+      } catch {
+        Message.error('Enter an HTTPS URL for the custom model.');
+        return;
+      }
+    }
+    setLoading(true);
+    const previous = getConfigSnapshot();
+    const previousScene = room.scene;
+    try {
+      if (!isEqual(data, getSettings())) {
+        const payload: Partial<ConfigFactory> = { ...data };
+        if (
+          !isLlmProviderAllowedForWebSearch(
+            payload['Provider.LLM'] || room.aiConfig['Provider.LLM']
+          )
+        ) {
+          payload.LLMWebSearchEnabled = false;
+        }
+        dispatch(updateAIConfig(payload));
+        await RtcClient.updateAgent();
+        dispatch(clearHistoryMsg());
+        dispatch(updateIsShowSubtitle(payload['Provider.Avatar'] === Provider.None));
+      }
+      dispatch(updateScene(scene));
+      setOpen(false);
+    } catch (error) {
+      dispatch(updateAIConfig(previous));
+      dispatch(updateScene(previousScene));
+      Message.error((error as Error).message || 'Unable to apply AI configuration.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     if (open) {
       setData(getSettings());
+      setScene(room.scene);
+      setSceneMode(LANGUAGE_SCENES.includes(room.scene) ? 1 : 0);
     }
-  }, [open]);
+  }, [open, room.scene]);
 
   return (
     <>
       <div className={styles.wrapper}>
         <div className={styles.header}>
-          <div className={styles.title}>AI Character</div>
-          <div className={styles.button} onClick={handleClick}>
-            <div className={styles['button-wrapper']}>
-              <div className={styles['button-text']}>Configure</div>
-            </div>
-          </div>
+          <div className={styles.title}>AI character setting</div>
         </div>
-        <div className={styles.divider} />
         <div className={styles.infos}>
           {infos.map((info) => (
             <div key={info} className={styles.info}>
@@ -261,9 +320,12 @@ function AISettings() {
             </div>
           ))}
         </div>
+        <Button className={styles.button} onClick={handleClick}>
+          <span className={styles['button-text']}>Configure</span>
+        </Button>
       </div>
       <Drawer
-        width={utils.isMobile() ? '100%' : 'min(870px, 100vw)'}
+        width={utils.isMobile() ? '100%' : Math.min(1180, window.innerWidth - 32)}
         closable={false}
         maskClosable={false}
         escToExit={false}
@@ -274,14 +336,12 @@ function AISettings() {
         }}
         footer={
           <div className={styles.footer}>
-            <div className={styles.suffix}>
-              The AI configuration you modified will not be saved after exiting the room.
-            </div>
+            <div className={styles.suffix}>Apply changes to restart the current conversation.</div>
             <Button loading={loading} className={styles.cancel} onClick={() => setOpen(false)}>
               Cancel
             </Button>
             <Button loading={loading} className={styles.confirm} onClick={handleUpdateConfig}>
-              Confirm
+              Apply
             </Button>
           </div>
         }
@@ -289,149 +349,256 @@ function AISettings() {
         onCancel={() => setOpen(false)}
       >
         <div className={styles.title}>
-          <span className={styles['special-text']}> AI Settings</span>
+          Choose Your <span className={styles['special-text']}>AI Character</span> for
+          <Tag color="arcoblue">{isRealTimeCallMode() ? 'End-to-end' : 'Cascading solution'}</Tag>
         </div>
-        <div className={styles['sub-title']}>
-          We have configured the basic parameters for you, and you can also customize the settings
-          according to your own needs.{' '}
-        </div>
-        <div className={styles.configuration}>
-          <AnchorTitle content="Character setting" />
-          <TitleCard title="Prompt" className={styles.prompt}>
-            <Input.TextArea
-              autoSize={{ minRows: 1, maxRows: 6 }}
-              placeholder="prompt"
-              value={data.SystemMessages?.[0]}
-              onChange={propsChangedHandler('SystemMessages', (val) => [val])}
-            />
-          </TitleCard>
-          <TitleCard title="Welcome speech" className={styles.welcomeSpeech}>
-            <Input.TextArea
-              autoSize={{ minRows: 1, maxRows: 3 }}
-              placeholder="welcome speech"
-              value={data.WelcomeMessage}
-              onChange={propsChangedHandler('WelcomeMessage')}
-            />
-          </TitleCard>
-          <TitleCard title="TTS">
-            <CheckBoxSelector
-              label="TTS"
-              data={formatVoiceTypeOptions(
-                isRealTimeCallMode()
-                  ? {
-                      [Provider.OpenAI]: OPENAI_VOICE_TYPE,
-                    }
-                  : {
-                      [BYTEPLUS_TTS_V2]: BYTE_PLUS_TTS_2_VOICE_TYPE,
-                      [BYTEPLUS_TTS_V1]: BYTE_PLUS_VOICE_TYPE,
-                      [Provider.OpenAI]: OPENAI_VOICE_TYPE,
-                      [Provider.Amazon]: AMAZON_VOICE_TYPE,
-                      [Provider.Google]: GOOGLE_VOICE_TYPE,
-                    }
-              )}
-              moreProps={{
-                icon: <IconSwap style={{ fontSize: '12px' }} />,
-                text: 'Switch',
-              }}
-              checked={
-                data['Provider.TTS'] === Provider.Byteplus
-                  ? byteplusTtsKeyFromVersion(data.SeedTtsVersion || '2.0')
-                  : data['Provider.TTS']
-              }
-              onChange={(voice) => {
-                propsChangedHandler('voice')(voice);
-                const isBpVoice =
-                  Object.values(BYTE_PLUS_VOICE_TYPE).includes(voice as BYTE_PLUS_VOICE_TYPE) ||
-                  Object.values(BYTE_PLUS_TTS_2_VOICE_TYPE).includes(
-                    voice as BYTE_PLUS_TTS_2_VOICE_TYPE
-                  );
-                if (isBpVoice) {
-                  setData((prev) => ({
-                    ...prev,
-                    voice: voice as ConfigFactory['voice'],
-                    'Provider.TTS': Provider.Byteplus,
-                    SeedTtsVersion: getSeedTtsVersionFromVoice(voice as ConfigFactory['voice']),
-                  }));
-                }
-              }}
-              onChecked={(v) => {
-                if (v === BYTEPLUS_TTS_V1 || v === BYTEPLUS_TTS_V2) {
-                  setData((prev) => ({
-                    ...prev,
-                    'Provider.TTS': Provider.Byteplus,
-                    SeedTtsVersion: seedTtsVersionFromKey(v),
-                  }));
-                  return;
-                }
-                propsChangedHandler('Provider.TTS')(v);
-              }}
-              value={data.voice}
-              placeHolder="Please select the voice you need"
-            />
-          </TitleCard>
-          {!isRealTimeCallMode() ? (
-            <TitleCard title="LLM">
+        {!isRealTimeCallMode() && (
+          <Radio.Group
+            type="button"
+            value={sceneMode}
+            className={styles['scene-radio-group']}
+            options={[
+              { label: 'Chinese / English', value: 0 },
+              { label: 'Other Languages / Dialects', value: 1 },
+            ]}
+            onChange={(mode) => {
+              setSceneMode(mode);
+              handleScene(mode ? LANGUAGE_SCENES[0] : SCENE.TEACHING_ASSISTANT);
+            }}
+          />
+        )}
+        <div className={styles.content}>
+          {!isRealTimeCallMode() && (
+            <div className={styles['scene-list-wrapper']}>
+              <div className={styles.scenes}>
+                {(sceneMode ? LANGUAGE_SCENES : [...SCENES, SCENE.CUSTOM]).map((key) => (
+                  <CheckIcon
+                    mode="horizontal"
+                    key={key}
+                    title={Name[key]}
+                    icon={Icon[key]}
+                    tag={SCENE_TAG[key]}
+                    checked={scene === key}
+                    onClick={() => handleScene(key)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+          <div className={styles.configuration}>
+            <TitleCard title="TTS" size="mini">
               <CheckBoxSelector
-                label="LLM Models"
-                data={formatModelTypeOptions(ModelMap)}
-                moreProps={{
-                  icon: <IconSwap style={{ fontSize: '12px' }} />,
-                  text: 'Switch',
-                }}
-                checked={data['Provider.LLM']}
-                onChange={propsChangedHandler('endPointId')}
-                onChecked={propsChangedHandler('Provider.LLM')}
-                value={data.endPointId}
-                placeHolder="Please select the model you prefer"
-              />
-            </TitleCard>
-          ) : null}
-          {!isRealTimeCallMode() ? (
-            <TitleCard title="ASR">
-              <CheckBoxSelector
-                label="ASR Vendor"
-                data={formatAsrOptions(
-                  expandByteplusAsrProviders(ASR_PROVIDER_OPTIONS.map((o) => o.value))
+                label="TTS"
+                data={formatVoiceTypeOptions(
+                  isRealTimeCallMode()
+                    ? {
+                        [Provider.OpenAI]: { ALLOY: OPENAI_VOICE_TYPE.ALLOY },
+                      }
+                    : {
+                        [BYTEPLUS_TTS_V2]: BYTE_PLUS_TTS_2_VOICE_TYPE,
+                        [BYTEPLUS_TTS_V1]: BYTE_PLUS_VOICE_TYPE,
+                        [Provider.OpenAI]: OPENAI_VOICE_TYPE,
+                        [Provider.Amazon]: AMAZON_VOICE_TYPE,
+                        [Provider.Google]: getGoogleSceneVoices(scene),
+                      },
+                  scene
                 )}
-                onChange={(v) => {
-                  if (v === BYTEPLUS_ASR_V1 || v === BYTEPLUS_ASR_V2) {
-                    setData((p) => ({
-                      ...p,
-                      'Provider.ASR': Provider.Byteplus,
-                      SeedAsrVersion: seedAsrVersionFromKey(v),
+                moreProps={{
+                  icon: <IconSwap style={{ fontSize: '16px' }} />,
+                }}
+                checked={
+                  data['Provider.TTS'] === Provider.Byteplus
+                    ? byteplusTtsKeyFromVersion(data.SeedTtsVersion || '2.0')
+                    : data['Provider.TTS']
+                }
+                onChange={(voice) => {
+                  propsChangedHandler('voice')(voice);
+                  const isBpVoice =
+                    Object.values(BYTE_PLUS_VOICE_TYPE).includes(voice as BYTE_PLUS_VOICE_TYPE) ||
+                    Object.values(BYTE_PLUS_TTS_2_VOICE_TYPE).includes(
+                      voice as BYTE_PLUS_TTS_2_VOICE_TYPE
+                    );
+                  if (isBpVoice) {
+                    setData((prev) => ({
+                      ...prev,
+                      voice: voice as ConfigFactory['voice'],
+                      'Provider.TTS': Provider.Byteplus,
+                      SeedTtsVersion: getSeedTtsVersionFromVoice(voice as ConfigFactory['voice']),
                     }));
-                  } else {
-                    propsChangedHandler('Provider.ASR')(v);
                   }
                 }}
-                value={
-                  data['Provider.ASR'] === Provider.Byteplus
-                    ? byteplusAsrKeyFromVersion(data.SeedAsrVersion || '2.0')
-                    : data['Provider.ASR']
-                }
+                onChecked={(v) => {
+                  if (v === BYTEPLUS_TTS_V1 || v === BYTEPLUS_TTS_V2) {
+                    setData((prev) => ({
+                      ...prev,
+                      'Provider.TTS': Provider.Byteplus,
+                      SeedTtsVersion: seedTtsVersionFromKey(v),
+                    }));
+                    return;
+                  }
+                  propsChangedHandler('Provider.TTS')(v);
+                }}
+                value={data.voice}
+                placeHolder="Please select the voice you need"
+              />
+            </TitleCard>
+            {!isRealTimeCallMode() ? (
+              <TitleCard title="LLM" size="mini">
+                <CheckBoxSelector
+                  label="LLM Models"
+                  data={formatModelTypeOptions(ModelMap)}
+                  moreProps={{
+                    icon: <IconSwap style={{ fontSize: '16px' }} />,
+                  }}
+                  checked={data['Provider.LLM']}
+                  onChange={(name) => {
+                    const provider =
+                      (Object.keys(ModelMap) as (keyof typeof ModelMap)[]).find((key) =>
+                        Object.hasOwn(ModelMap[key], name)
+                      ) || Provider.Byteplus;
+                    const models = ModelMap[provider] as Record<string, { endPointId: string }>;
+                    setData((prev) => ({
+                      ...prev,
+                      Model: name,
+                      endPointId:
+                        name === prev.Model ? prev.endPointId : models[name]?.endPointId || '',
+                      VisionEnable: isVisionMode(name),
+                      'Provider.LLM': provider,
+                    }));
+                  }}
+                  onChecked={propsChangedHandler('Provider.LLM')}
+                  value={data.Model}
+                  placeHolder="Please select the model you prefer"
+                />
+              </TitleCard>
+            ) : null}
+            {!isRealTimeCallMode() ? (
+              <TitleCard title="ASR" size="mini">
+                <CheckBoxSelector
+                  label="ASR Vendor"
+                  data={Object.fromEntries(
+                    formatAsrOptions(
+                      expandByteplusAsrProviders(
+                        ASR_PROVIDER_OPTIONS.filter(
+                          (o) => !sceneMode || o.value !== Provider.Byteplus
+                        ).map((o) => o.value)
+                      )
+                    ).map((option) => [option.value, [option]])
+                  )}
+                  onChange={(v) => {
+                    if (v === BYTEPLUS_ASR_V1 || v === BYTEPLUS_ASR_V2) {
+                      setData((p) => ({
+                        ...p,
+                        'Provider.ASR': Provider.Byteplus,
+                        SeedAsrVersion: seedAsrVersionFromKey(v),
+                      }));
+                    } else {
+                      propsChangedHandler('Provider.ASR')(v);
+                    }
+                  }}
+                  checked={
+                    data['Provider.ASR'] === Provider.Byteplus
+                      ? byteplusAsrKeyFromVersion(data.SeedAsrVersion || '2.0')
+                      : data['Provider.ASR']
+                  }
+                  value={
+                    data['Provider.ASR'] === Provider.Byteplus
+                      ? byteplusAsrKeyFromVersion(data.SeedAsrVersion || '2.0')
+                      : data['Provider.ASR']
+                  }
+                  moreProps={{
+                    icon: <IconSwap style={{ fontSize: '16px' }} />,
+                  }}
+                  placeHolder="Please select the vendor you need"
+                />
+              </TitleCard>
+            ) : null}
+            <TitleCard title="Avatar Role" size="mini">
+              <CheckBoxSelector
+                label="Avatar Role"
+                data={formatAvatarTypeOptions(isRealTimeCallMode() ? RealtimeAvatarMap : AvatarMap)}
+                onChange={propsChangedHandler('avatar')}
+                onChecked={propsChangedHandler('Provider.Avatar')}
+                checked={data['Provider.Avatar']}
+                value={data.avatar}
                 moreProps={{
-                  icon: <IconSwap style={{ fontSize: '12px' }} />,
-                  text: 'Switch',
+                  icon: <IconSwap style={{ fontSize: '16px' }} />,
                 }}
                 placeHolder="Please select the vendor you need"
               />
             </TitleCard>
-          ) : null}
-          <TitleCard title="Avatar Role">
-            <CheckBoxSelector
-              label="Avatar Role"
-              data={formatAvatarTypeOptions(isRealTimeCallMode() ? RealtimeAvatarMap : AvatarMap)}
-              onChange={propsChangedHandler('avatar')}
-              onChecked={propsChangedHandler('Provider.Avatar')}
-              checked={data['Provider.Avatar']}
-              value={data.avatar}
-              moreProps={{
-                icon: <IconSwap style={{ fontSize: '12px' }} />,
-                text: 'Switch',
-              }}
-              placeHolder="Please select the vendor you need"
-            />
-          </TitleCard>
+            {data['Provider.Avatar'] === Provider.Akool && (
+              <TitleCard title="Avatar ID">
+                <Input
+                  value={data.avatar}
+                  onChange={propsChangedHandler('avatar')}
+                  placeholder="Enter an Akool avatar ID"
+                />
+              </TitleCard>
+            )}
+            {!isRealTimeCallMode() && (
+              <TitleCard
+                title={
+                  data['Provider.LLM'] === Provider.Byteplus ? 'Model endpoint ID' : 'Model name'
+                }
+              >
+                <Input
+                  value={data.endPointId === 'Your model ID' ? '' : data.endPointId}
+                  placeholder="Enter the model endpoint ID"
+                  onChange={propsChangedHandler('endPointId')}
+                />
+              </TitleCard>
+            )}
+            {data['Provider.LLM'] === Provider.CustomLLM && (
+              <TitleCard title="Model URL">
+                <Input
+                  value={data.CustomModelURL}
+                  onChange={propsChangedHandler('CustomModelURL')}
+                  placeholder="https://example.com/v1/chat/completions"
+                />
+              </TitleCard>
+            )}
+            {!isRealTimeCallMode() &&
+              (data['Provider.ASR'] === Provider.GoogleAsrV1 ||
+                data['Provider.ASR'] === Provider.GoogleAsrV2 ||
+                data['Provider.ASR'] === Provider.Amazon) && (
+                <TitleCard title="Recognition language">
+                  <Input
+                    value={data.AsrLanguage}
+                    onChange={propsChangedHandler('AsrLanguage')}
+                    placeholder="en-US"
+                  />
+                </TitleCard>
+              )}
+            <TitleCard
+              title="Prompt"
+              className={`${styles.prompt} ${focusInput === 'prompt' ? styles.focus : ''}`}
+              titleClassName={focusInput === 'prompt' ? styles['focus-title'] : ''}
+            >
+              <Input.TextArea
+                onFocus={() => setFocusInput('prompt')}
+                onBlur={() => setFocusInput('')}
+                autoSize={{ minRows: 3, maxRows: 6 }}
+                placeholder="prompt"
+                value={data.SystemMessages?.[0]}
+                onChange={propsChangedHandler('SystemMessages', (val) => [val])}
+              />
+            </TitleCard>
+            <TitleCard
+              title="Welcome speech"
+              className={`${styles.welcomeSpeech} ${focusInput === 'welcome' ? styles.focus : ''}`}
+              titleClassName={focusInput === 'welcome' ? styles['focus-title'] : ''}
+            >
+              <Input.TextArea
+                onFocus={() => setFocusInput('welcome')}
+                onBlur={() => setFocusInput('')}
+                autoSize={{ minRows: 2, maxRows: 3 }}
+                placeholder="welcome speech"
+                value={data.WelcomeMessage}
+                onChange={propsChangedHandler('WelcomeMessage')}
+              />
+            </TitleCard>
+          </div>
         </div>
       </Drawer>
     </>

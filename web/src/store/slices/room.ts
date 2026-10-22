@@ -11,8 +11,9 @@ import {
   RemoteAudioStats,
 } from '@byteplus/rtc';
 import { CALL_TYPE } from '@/app/base';
-import { ConfigFactory } from '@/config/config';
+import { getConfigSnapshot } from '@/config/settings';
 import config from '@/config';
+import { SCENE } from '@/config/scene';
 
 export interface IUser {
   username?: string;
@@ -39,8 +40,12 @@ export interface Msg {
 }
 
 export interface RoomState {
+  scene: SCENE;
+  isShowSubtitle: boolean;
+  isAINREnable: boolean;
   time: number;
   roomId?: string;
+  sessionStartedAt?: number;
   localUser: LocalUser;
   remoteUsers: IUser[];
   autoPlayFailUser: string[];
@@ -72,7 +77,7 @@ export interface RoomState {
   /**
    * @brief Basic AI configuration.
    */
-  aiConfig: ConfigFactory;
+  aiConfig: ReturnType<typeof getConfigSnapshot>;
   /**
    * @brief Network quality.
    */
@@ -101,12 +106,15 @@ export interface RoomState {
 }
 
 const initialState: RoomState = {
+  scene: SCENE.CUSTOM,
+  isShowSubtitle: true,
+  isAINREnable: true,
   time: -1,
   callMode: CALL_TYPE.VOICE_CHAT,
   remoteUsers: [],
   localUser: {
     publishAudio: true,
-    publishVideo: true,
+    publishVideo: false,
   },
   autoPlayFailUser: [],
   isJoined: false,
@@ -116,7 +124,7 @@ const initialState: RoomState = {
   isFullScreen: false,
   networkQuality: NetworkQuality.UNKNOWN,
 
-  aiConfig: config,
+  aiConfig: getConfigSnapshot(),
 
   msgHistory: [],
   currentConversation: {},
@@ -126,6 +134,15 @@ export const roomSlice = createSlice({
   name: 'room',
   initialState,
   reducers: {
+    updateIsAINREnable: (state, { payload }: { payload: boolean }) => {
+      state.isAINREnable = payload;
+    },
+    updateScene: (state, { payload }: { payload: SCENE }) => {
+      state.scene = payload;
+    },
+    updateIsShowSubtitle: (state, { payload }: { payload: boolean }) => {
+      state.isShowSubtitle = payload;
+    },
     localJoinRoom: (
       state,
       {
@@ -138,6 +155,7 @@ export const roomSlice = createSlice({
       }
     ) => {
       state.roomId = payload.roomId;
+      state.sessionStartedAt = Date.now();
       state.localUser = {
         ...state.localUser,
         ...payload.user,
@@ -146,10 +164,11 @@ export const roomSlice = createSlice({
     },
     localLeaveRoom: (state) => {
       state.roomId = undefined;
+      state.sessionStartedAt = undefined;
       state.time = -1;
       state.localUser = {
         publishAudio: true,
-        publishVideo: true,
+        publishVideo: false,
       };
       state.remoteUsers = [];
       state.isJoined = false;
@@ -220,7 +239,8 @@ export const roomSlice = createSlice({
       state.isFullScreen = payload.isFullScreen;
     },
     updateAIConfig: (state, { payload }) => {
-      state.aiConfig = Object.assign(state.aiConfig, payload);
+      Object.assign(config, payload);
+      state.aiConfig = getConfigSnapshot();
     },
     clearHistoryMsg: (state) => {
       state.msgHistory = [];
@@ -294,6 +314,9 @@ export const roomSlice = createSlice({
 });
 
 export const {
+  updateIsAINREnable,
+  updateScene,
+  updateIsShowSubtitle,
   localJoinRoom,
   localLeaveRoom,
   remoteUserJoin,

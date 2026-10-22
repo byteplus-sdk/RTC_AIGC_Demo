@@ -109,3 +109,12 @@ Refer to [OpenAPI Updates](https://docs.byteplus.com/en/docs/byteplus-rtc/docs-1
     - Modify the Endpoint ID of Byteplus Ark Model. which needs to be filled in by the user.
 - 2025-06-06
     - Initial Release
+
+### Model and session settings
+
+`BYTEPLUS_MODEL_ENDPOINT_ID` configures the default Seed model endpoint.
+`BYTEPLUS_MODEL_ENDPOINTS` accepts a JSON object mapping the model names shown in Configure to your endpoint IDs. Each selected ModelArk endpoint can also be edited in Configure.
+
+Google LLM models use `GOOGLE_LLM_API_KEY`. Custom LLMs use `CUSTOM_LLM_URL` and `CUSTOM_LLM_API_KEY`; the URL and model name can be edited in Configure. Credentials stay in the server environment.
+
+`SESSION_DURATION_SECONDS` sets the local demo session limit (default: 1800 seconds). The sidebar displays the remaining session time and the demo leaves the room when the limit expires.

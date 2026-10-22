@@ -16,6 +16,8 @@ import { ModuleType, Provider } from '../basic';
  * @note For more information, you can refer to https://docs.byteplus.com/en/docs/byteplus-rtc/docs-1316243
  */
 export class VoiceChatManager {
+  interruptMode = true;
+
   llm: LLMManager;
 
   asr: ASRManager;
@@ -38,6 +40,9 @@ export class VoiceChatManager {
   }
 
   setProvider(module: ModuleType, provider: Provider) {
+    if (module === ModuleType.Avatar && provider !== Provider.None && provider !== Provider.Akool) {
+      throw new Error('Flexible avatars require Akool');
+    }
     (this[module] as { provider: Provider }).provider = provider;
   }
 
@@ -76,6 +81,7 @@ export class VoiceChatManager {
     const ttsConfig = this.tts.value;
     return {
       Config: {
+        InterruptMode: this.interruptMode ? 0 : 1,
         LLMConfig: llmConfig,
         ASRConfig: this.asr.value,
         TTSConfig: ttsConfig,
@@ -83,7 +89,7 @@ export class VoiceChatManager {
         SubtitleConfig: {
           SubtitleMode:
             this.avatar.value.Enabled ||
-            (ttsConfig.ProviderParams as { resourceId?: string }).resourceId === 'seed-tts-2.0' ||
+            (ttsConfig.ProviderParams as { ResourceId?: string }).ResourceId === 'seed-tts-2.0' ||
             this.tts.provider === Provider.OpenAI ||
             this.tts.provider === Provider.Google
               ? 1

@@ -22,6 +22,9 @@ const webEnv = Object.fromEntries(
 Object.assign(webEnv, {
   REACT_APP_RTC_APP_ID: env.RTC_APP_ID || '',
   REACT_APP_MODEL_ENDPOINT_ID: env.BYTEPLUS_MODEL_ENDPOINT_ID || '',
+  REACT_APP_CUSTOM_LLM_URL: env.CUSTOM_LLM_URL || '',
+  REACT_APP_MODEL_ENDPOINTS: env.BYTEPLUS_MODEL_ENDPOINTS || '{}',
+  REACT_APP_SESSION_DURATION_SECONDS: env.SESSION_DURATION_SECONDS || '1800',
   BROWSER: env.BROWSER || 'none',
 });
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';

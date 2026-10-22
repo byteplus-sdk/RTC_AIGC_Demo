@@ -2,6 +2,7 @@
  * Copyright 2025 Beijing Volcano Engine Technology Co., Ltd. All Rights Reserved.
  * SPDX-license-identifier: BSD-3-Clause
  */
+import { StreamIndex } from '@byteplus/rtc';
 import { v4 as uuid } from 'uuid';
 import { isRealTimeCallMode } from '@/app/base';
 import { PROMPT } from '.';
@@ -11,6 +12,7 @@ import { isLlmProviderAllowedForWebSearch, ModuleType, Provider } from './basic'
 
 import type { IVoiceType } from './voiceChat/tts';
 import { getSeedTtsVersionFromVoice } from './voiceChat/tts';
+import { ModelNames, THINKING_TYPE, isDeepThinkingMode } from './voiceChat/llm';
 import type { SeedVersion } from './voiceChat/seedVersion';
 import type { LlmCustomMcpEntry } from './voiceChat/mcpManager';
 
@@ -43,6 +45,22 @@ export class ConfigFactory {
    *       Or leave it undefined, demo will generate it automatically by calling api (in src/lib/useCommon.ts), and this require your RTC_APP_KEY in /Server/sensitve.js.
    */
   Token = undefined;
+
+  VisionEnable = false;
+
+  VisionSourceType = StreamIndex.STREAM_INDEX_MAIN;
+
+  Model: string = ModelNames.Seed21Turbo;
+
+  set CustomModelURL(value: string) {
+    this.#voiceChatManager.llm.url = value;
+  }
+
+  get CustomModelURL() {
+    return this.#voiceChatManager.llm.url;
+  }
+
+  ThinkingType = THINKING_TYPE.DISABLED;
 
   BotName = 'RobotMan_';
 
@@ -215,6 +233,22 @@ export class ConfigFactory {
     return isRealTimeCallMode() ? [] : this.#voiceChatManager.mcp.customMcpList;
   }
 
+  set AsrLanguage(value: string) {
+    this.#voiceChatManager.asr.language = value;
+  }
+
+  get AsrLanguage() {
+    return this.#voiceChatManager.asr.language;
+  }
+
+  set interruptMode(value: boolean) {
+    this.#voiceChatManager.interruptMode = value;
+  }
+
+  get interruptMode() {
+    return this.#voiceChatManager.interruptMode;
+  }
+
   get AvatarEnable() {
     return isRealTimeCallMode()
       ? this.#realTimeManager.avatar.provider !== Provider.None
@@ -231,21 +265,38 @@ export class ConfigFactory {
     const params = {
       AppId: this.AppId,
       RoomId: this.RoomId,
-      UserId: this.UserId,
       TaskId: this.UserId,
       AgentConfig: {
+        ...(isRealTimeCallMode()
+          ? { UserId: this.BotName }
+          : { UserID: this.BotName, EnableConversationStateCallback: true }),
         /**
          * @note UserId of the client
          */
         TargetUserID: [this.UserId],
-        /**
-         * @note The name of the chat agent in the room.
-         */
-        UserID: this.BotName,
         WelcomeMessage: this.WelcomeMessage,
       },
       ...this.#manager.config,
     };
+    if ('Config' in params) {
+      if (this['Provider.LLM'] === Provider.Byteplus && isDeepThinkingMode(this.Model)) {
+        Object.assign(params.Config.LLMConfig, { ThinkingType: this.ThinkingType });
+      }
+      Object.assign(params.Config.LLMConfig, {
+        VisionConfig: {
+          Enable:
+            this.VisionEnable &&
+            !this.LLMWebSearchEnabled &&
+            !this.CustomMcpList.some((item) => item.URL?.trim()),
+          SnapshotConfig: {
+            StreamType: this.VisionSourceType,
+            Height: 480,
+            Interval: 1000,
+            ImagesLimit: 1,
+          },
+        },
+      });
+    }
     return params;
   }
 }

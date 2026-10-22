@@ -5,7 +5,6 @@
 
 import { Provider } from '../basic';
 import ArkSVG from '@/assets/img/Ark.svg';
-import DeepSeekSVG from '@/assets/img/DeepSeek.svg';
 
 export { isLlmProviderAllowedForWebSearch, isLlmProviderAllowedForVoiceChatMcp } from '../basic';
 
@@ -21,53 +20,83 @@ export { WebSearchManager } from './webSearchManager';
 
 /**
  * @note Ark Model IDs, visit following url to find endpoint column, set model ID you want to use.
- *       *Demo default use 'Skylark-pro', you could modify it in LLMManager.endPointId.*
  * @refer https://console.byteplus.com/ark/region:ark+ap-southeast-1/endpoint
  */
-export const ArkModel = {
-  'Skylark-pro': {
-    endPointId: 'Your model ID',
-    description: '128k, Trial supported',
-    icon: ArkSVG,
-  },
-  'Skylark-lite': {
-    endPointId: 'Your model ID',
-    description: '32k, Trial supported',
-    icon: ArkSVG,
-  },
-  'DeepSeek-R1｜250528': {
-    endPointId: 'Your model ID',
-    description: '32k, Trial supported',
-    icon: DeepSeekSVG,
-  },
-  'DeepSeek-R1｜250120': {
-    endPointId: 'Your model ID',
-    description: '32k, Trial supported',
-    icon: DeepSeekSVG,
-  },
-  'DeepSeek-V3｜250324': {
-    endPointId: 'Your model ID',
-    description: '128k, Trial supported',
-    icon: DeepSeekSVG,
-  },
-  'Deepseek-R1-Distill-Qwen-32b｜250120': {
-    endPointId: 'Your model ID',
-    description: '32k, Trial supported',
-    icon: DeepSeekSVG,
-  },
-};
+export enum ModelNames {
+  Seed21Turbo = 'Dola-Seed-2.1-turbo｜260628',
+  Seed20Pro = 'Dola-Seed-2.0-pro｜260328',
+  Seed20Mini = 'Dola-Seed-2.0-mini｜260215',
+  Seed16Flash = 'ByteDance-Seed-1.6-flash｜250715',
+  Seed16 = 'ByteDance-Seed-1.6｜250915',
+  GPT4o = 'GPT-4o',
+  GPT51 = 'GPT-5.1',
+  Gemini25Flash = 'Gemini-2.5-flash',
+  Gemini25Pro = 'Gemini-2.5-pro',
+  Custom = 'Custom Model',
+}
+
+export enum THINKING_TYPE {
+  ENABLED = 'enabled',
+  DISABLED = 'disabled',
+}
+
+const endpointMap: Record<string, string> = (() => {
+  try {
+    const value = JSON.parse(process.env.REACT_APP_MODEL_ENDPOINTS || '{}');
+    return Object.fromEntries(
+      Object.entries(value).filter(
+        (entry): entry is [string, string] => typeof entry[1] === 'string'
+      )
+    );
+  } catch {
+    return {};
+  }
+})();
+
+export const ArkModel = Object.fromEntries(
+  [
+    ModelNames.Seed21Turbo,
+    ModelNames.Seed20Pro,
+    ModelNames.Seed20Mini,
+    ModelNames.Seed16Flash,
+    ModelNames.Seed16,
+  ].map((name) => [
+    name,
+    {
+      endPointId:
+        endpointMap[name] ||
+        (name === ModelNames.Seed21Turbo
+          ? process.env.REACT_APP_MODEL_ENDPOINT_ID || 'Your model ID'
+          : ''),
+      description: 'Multimodal · Deep Thinking',
+      icon: ArkSVG,
+    },
+  ])
+);
 
 export const OpenAiModel = {
-  'GPT-4o': {
-    endPointId: 'gpt-4o-2024-11-20',
-    description: 'GPT-4o 2024-11-20',
-  },
+  [ModelNames.GPT4o]: { endPointId: 'gpt-4o-2024-11-20', description: 'Multimodal' },
+  [ModelNames.GPT51]: { endPointId: 'gpt-5.1-2025-11-13', description: 'Multimodal' },
+};
+
+export const GoogleModel = {
+  [ModelNames.Gemini25Flash]: { endPointId: 'gemini-2.5-flash', description: 'Multimodal' },
+  [ModelNames.Gemini25Pro]: { endPointId: 'gemini-2.5-pro', description: 'Multimodal' },
 };
 
 export const ModelMap = {
   [Provider.Byteplus]: ArkModel,
   [Provider.OpenAI]: OpenAiModel,
+  [Provider.Google]: GoogleModel,
+  [Provider.CustomLLM]: {
+    [ModelNames.Custom]: { endPointId: '', description: 'OpenAI-compatible endpoint' },
+  },
 };
+
+export const isVisionMode = (model: string) =>
+  model !== ModelNames.Custom && Object.values(ModelNames).includes(model as ModelNames);
+
+export const isDeepThinkingMode = (model: string) => Object.hasOwn(ArkModel, model);
 
 /**
  * @brief Flexible Mode (VoiceChat Mode) Config.
@@ -76,73 +105,53 @@ export const ModelMap = {
  *       Web Search / MCP are handled by {@link WebSearchManager} and {@link McpManager} on {@link VoiceChatManager}.
  */
 export class LLMManager {
-  provider: Provider.Byteplus | Provider.OpenAI;
+  provider: Provider.Byteplus | Provider.OpenAI | Provider.Google | Provider.CustomLLM;
+
+  url = process.env.REACT_APP_CUSTOM_LLM_URL || '';
 
   systemMessages: string[] = [];
 
-  endPointId: string = ArkModel['Skylark-pro'].endPointId;
+  endPointId: string = ArkModel[ModelNames.Seed21Turbo].endPointId;
 
-  #paramsMap: {
-    [Provider.Byteplus]: {
-      Mode: 'BytePlusArk';
-      /**
-       * @refer https://console.byteplus.com/voice/service/1000014?s=g
-       */
-      EndPointId: string;
-      /**
-       * @note Injected by server, refer to Server/sensitive.js.
-       * @refer https://console.byteplus.com/ark/region:ark+ap-southeast-1/endpoint?s=g
-       */
+  #paramsMap: Record<
+    Provider.Byteplus | Provider.OpenAI | Provider.Google | Provider.CustomLLM,
+    {
+      Provider?: 'BytePlus' | 'OpenAI';
+      Mode?: 'CustomLLM';
+      EndPointId?: string;
+      Url?: string;
       APIKey?: string;
       SystemMessages?: string[];
-    };
-    /**
-     * @note Demo using OpenAI as example for CustomLLM.
-     */
-    [Provider.OpenAI]: {
-      Mode: 'CustomLLM';
-      /**
-       * @note Third part request url, like `https://api.openai.com/v1/chat/completions` for example.
-       *       - Protocol: Must support the SSE (Server-Sent Events) protocol.
-       *       - Headers: Content-Type must be text/event-stream.
-       *       - Terminator: Must contain the data: [DONE] terminator.
-       *
-       *       If need using third part API, you can contact BytePlus support team for more technical support.
-       */
-      Url: string;
-      /**
-       * @refer https://platform.openai.com/docs/models#tts
-       */
       ModelName?: string;
-      /**
-       * @note Injected by server, refer to Server/sensitive.js.
-       * @refer https://platform.openai.com/api-keys
-       */
-      APIKey?: string;
-      SystemMessages?: string[];
-      UserMessages?: string[];
-    };
-  };
+    }
+  >;
 
   constructor() {
     this.provider = Provider.Byteplus;
     this.#paramsMap = {
       [Provider.Byteplus]: {
-        Mode: 'BytePlusArk',
-        EndPointId: ArkModel['Skylark-pro'].endPointId,
+        Provider: 'BytePlus',
+        EndPointId: ArkModel[ModelNames.Seed21Turbo].endPointId,
       },
+      [Provider.Google]: {
+        Url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+        Mode: 'CustomLLM',
+      },
+      [Provider.CustomLLM]: { Url: this.url, Mode: 'CustomLLM' },
       [Provider.OpenAI]: {
         Url: 'https://api.openai.com/v1/chat/completions',
-        Mode: 'CustomLLM',
+        Provider: 'OpenAI',
         ModelName: OpenAiModel['GPT-4o'].endPointId,
         SystemMessages: [],
-        UserMessages: [],
       },
     };
   }
 
   get value() {
+    if (this.provider === Provider.CustomLLM) this.#paramsMap[this.provider].Url = this.url;
     switch (this.provider) {
+      case Provider.CustomLLM:
+      case Provider.Google:
       case Provider.OpenAI:
         this.#paramsMap[this.provider].SystemMessages = this.systemMessages;
         this.#paramsMap[this.provider].ModelName = this.endPointId;

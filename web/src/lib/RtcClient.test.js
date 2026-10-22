@@ -5,6 +5,7 @@ import { RtcClient } from './RtcClient';
 jest.mock('@byteplus/rtc', () => ({
   __esModule: true,
   default: { destroyEngine: jest.fn() },
+  StreamIndex: { STREAM_INDEX_MAIN: 0, STREAM_INDEX_SCREEN: 1 },
   NetworkQuality: { UNKNOWN: 0 },
 }));
 jest.mock('@byteplus/rtc/extension-ainr', () => jest.fn());

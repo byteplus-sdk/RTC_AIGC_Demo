@@ -4,12 +4,18 @@
  */
 
 @import './theme.less';
+@import './styles/theme.less';
 
 body {
   margin: 0;
   overflow: hidden;
   width: 100% !important;
-  background: linear-gradient(109.22deg, rgba(116, 37, 255, 0.05) 0.27%, rgba(39, 88, 255, 0.05) 51.39%, rgba(0, 102, 255, 0.05) 99.54%);
+  background: linear-gradient(
+    109.22deg,
+    rgba(116, 37, 255, 0.05) 0.27%,
+    rgba(39, 88, 255, 0.05) 51.39%,
+    rgba(0, 102, 255, 0.05) 99.54%
+  );
 
   img {
     user-drag: none;
@@ -23,12 +29,12 @@ body {
 
 @keyframes glow {
   0% {
-      opacity: 1;
+    opacity: 1;
   }
   40% {
-      opacity: 0.7;
+    opacity: 0.7;
   }
   100% {
-      opacity: 0.3;
+    opacity: 0.3;
   }
 }

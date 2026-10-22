@@ -1,129 +1,68 @@
-/**
- * Copyright 2025 Beijing Volcano Engine Technology Co., Ltd. All Rights Reserved.
- * SPDX-license-identifier: BSD-3-Clause
- */
-
 .wrapper {
-  width: 100%;
   display: flex;
-  flex-direction: row;
   align-items: center;
-
-  .placeholder {
-    font-size: 14px;
-    font-weight: 400;
-    line-height: 22px;
-    color: var(--text-color-text-3, rgba(115, 122, 135, 1));
+  width: 100%;
+  gap: 8px;
+  min-width: 0;
+  .box {
+    flex: 1;
+    min-width: 0;
   }
-
-  .audition {
-    margin-right: 12px;
-  }
-
   .op {
-    display: flex;
-    padding: 6px 12px;
-    justify-content: center;
-    align-items: center;
-    gap: var(--border-radius-small, 4px);
-    border-radius: 6px;
-    background: linear-gradient(96deg, rgba(22, 100, 255, 0.10) 0%, rgba(128, 64, 255, 0.10) 97.7%);
-
-    .opText {
-      font-family: "PingFang SC";
-      font-size: 13px;
-      font-style: normal;
-      font-weight: 500;
-      line-height: 22px; /* 169.231% */
-      letter-spacing: 0.039px;
-      background: var(--Linear, linear-gradient(90deg, #004FFF 38.86%, #9865FF 100%));
-      background-clip: text;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
+    flex-shrink: 0;
+    padding: 0 4px;
+    color: var(--brand-primary);
   }
 }
-
-:global {
-
-  .ant-modal-content {
-    border-radius: 8px;
-  }
-  .ant-modal-footer {
-    border-top: 0px;
-  }
-
-  .ant-modal-body {
-    padding-top: 8px;
-    padding-bottom: 16px;
-  }
-
-  .ant-modal-header {
-    border-bottom: 0px;
-    border-radius: 8px;
-  }
+.placeholder {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  flex: 1;
 }
-
-.footer {
-  width: calc(100% - 12px);
-  display: flex;
-  flex-direction: row;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 12px;
-
-  .cancel {
-    width: 88px;
-    height: 32px;
-    border-radius: 6px;
-    border: 1px solid var(--line-color-border-3, rgba(221, 226, 233, 1))
-  }
-
-  .confirm {
-    width: 88px;
-    height: 32px;
-    border-radius: 6px;
-    background: linear-gradient(95.87deg, #1664FF 0%, #8040FF 97.7%);
-    color: white !important;
-  }
-
-  .confirm:hover {
-    opacity: .8;
-  }
-
-  .confirm:active {
-    opacity: 1;
-  }
-}
-
-.modalInner {
+.picker {
   width: 100%;
-  // max-height: 500px;
+  color: var(--text-primary);
+}
+.title {
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 16px;
+}
+.tabs {
   display: flex;
-  flex: row;
   flex-wrap: wrap;
-  overflow: auto;
+  height: auto;
+  margin-bottom: 16px;
+  gap: 4px;
+}
+.options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+.option {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  min-width: 0;
+}
+.option:focus-visible {
+  outline: 2px solid var(--brand-primary);
+  border-radius: 8px;
+}
+.footer {
+  display: flex;
+  justify-content: flex-end;
   gap: 12px;
+  margin-top: 16px;
 }
-
-.modal {
-  // max-height: 650px;
-  overflow: hidden;
-}
-
-.modalInner::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-  border-radius: 5px;
-}
-
-.modalInner::-webkit-scrollbar-thumb {
-  background: rgb(205, 204, 204);
-  border-radius: 0px;
-  border-radius: 5px;
-}
-
-.modalInner::-webkit-scrollbar-track {
-  background: rgb(255, 255, 255);
-  border-radius: 0px;
+@media (max-width: 480px) {
+  .options {
+    grid-template-columns: 1fr;
+  }
 }
