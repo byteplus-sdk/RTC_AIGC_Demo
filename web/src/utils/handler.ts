@@ -3,11 +3,16 @@
  * SPDX-license-identifier: BSD-3-Clause
  */
 
+import { useRef } from 'react';
 import { useDispatch } from 'react-redux';
 import { Message } from '@arco-design/web-react';
 import logger from './logger';
+import { createConversationErrorHandler } from './conversationErrors';
 import {
   setHistoryMsg,
+  localLeaveRoom,
+  updateAIGCState,
+  clearHistoryMsg,
   // setInterruptMsg,
   updateAITalkState,
   // updateAIThinkState,
@@ -82,13 +87,35 @@ export const MessageTypeCode = {
 
 export const useMessageHandler = () => {
   const dispatch = useDispatch();
+  const errorHandler = useRef(
+    createConversationErrorHandler(
+      (message) => Message.error(message),
+      async () => {
+        const engine = RtcClient.engine;
+        try {
+          await RtcClient.leaveRoom();
+        } finally {
+          if (RtcClient.engine === engine) {
+            dispatch(localLeaveRoom());
+            dispatch(updateAIGCState({ isAIGCEnable: false }));
+            dispatch(clearHistoryMsg());
+          }
+        }
+      }
+    )
+  );
 
   const maps = {
     [MESSAGE_TYPE.BRIEF]: (parsed: AnyRecord) => {
       const { Stage, ErrorInfo } = parsed || {};
       if (ErrorInfo) {
         logger.error('VoiceChat', ErrorInfo.ErrorCode, ErrorInfo.Reason);
-        Message.error(`VoiceChat ${ErrorInfo.ErrorCode}: ${ErrorInfo.Reason}`);
+        errorHandler.current(
+          RtcClient.engine,
+          RtcClient.audioBotStartTime,
+          Number(ErrorInfo.ErrorCode),
+          ErrorInfo.Reason
+        );
       }
       const { Code, Description } = Stage || {};
       logger.debug(Code, Description);
