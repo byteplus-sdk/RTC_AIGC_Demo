@@ -14,6 +14,7 @@ module.exports = {
   },
   devServer: {
     proxy: {
+      '/preflight': `http://localhost:${process.env.SERVER_PORT || 3001}`,
       '/runtimeConfig': `http://localhost:${process.env.SERVER_PORT || 3001}`,
       '/proxyAIGCFetch': `http://localhost:${process.env.SERVER_PORT || 3001}`,
       '/generateRtcAccessToken': `http://localhost:${process.env.SERVER_PORT || 3001}`,

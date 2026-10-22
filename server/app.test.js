@@ -303,3 +303,10 @@ test('accepted starts with delayed responses receive compensating Stop requests'
     'StartVoiceChatWithRealtimeAPI', 'StopVoiceChatWithRealtimeAPI',
   ]);
 });
+
+test('preflight reports missing avatar credentials before creating any task', async t => {
+ let calls=0;
+ const base=await serve(t,{fetchImpl:async()=>{calls++;throw new Error('unexpected API call');}});
+ const res=await post(`${base}/preflight?action=StartVoiceChat`,{Config:{LLMConfig:{Provider:'OpenAI'},ASRConfig:{Provider:'Amazon'},TTSConfig:{Provider:'OpenAI'},AvatarConfig:{Enabled:true,Provider:'Akool',ProviderParams:{AvatarId:'avatar'}}}});
+ const result=await res.json();assert.equal(res.status,200);assert.equal(result.ready,false);assert.equal(calls,0);
+});

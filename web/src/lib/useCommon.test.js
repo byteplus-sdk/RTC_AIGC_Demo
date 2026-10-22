@@ -8,6 +8,8 @@ import config from '@/config';
 import openAPIs from '@/app/index';
 import RtcClient from '@/lib/RtcClient';
 import { useJoin, useLeave } from './useCommon';
+import { checkCallConfiguration } from '@/app/preflight';
+jest.mock('@/app/preflight', () => ({ checkCallConfiguration: jest.fn() }));
 
 jest.mock('@byteplus/rtc', () => ({
   __esModule: true,
@@ -39,12 +41,14 @@ function Harness() {
 }
 beforeEach(() => {
   global.IS_REACT_ACT_ENVIRONMENT = true;
+  checkCallConfiguration.mockResolvedValue({ ready: true, issues: [] });
   previousAppId = config.AppId;
   previousGenerateToken = openAPIs.GenerateRtcAccessToken;
   config.AppId = 'Your AppId';
   previousFetch = global.fetch;
   global.fetch = jest.fn().mockResolvedValue({
-    ok: true, json: async () => ({ Result: { appId: 'test-app' } }),
+    ok: true,
+    json: async () => ({ Result: { appId: 'test-app' } }),
   });
   Modal.error.mockClear();
   BytePlusRTC.isSupported.mockResolvedValue(true);
@@ -167,13 +171,14 @@ test('exit waits for cleanup and coalesces repeated clicks', async () => {
   ]);
 });
 
-
 test('runtime AppId is loaded before token issuance', async () => {
   openAPIs.GenerateRtcAccessToken = jest.fn().mockRejectedValue(new Error('token unavailable'));
   await act(async () => container.querySelector('button').click());
   expect(global.fetch).toHaveBeenCalledWith(expect.stringMatching(/\/runtimeConfig$/));
   expect(openAPIs.GenerateRtcAccessToken).toHaveBeenCalledWith({
-    appID: 'test-app', roomID: 'room', userID: 'user',
+    appID: 'test-app',
+    roomID: 'room',
+    userID: 'user',
   });
 });
 
@@ -182,7 +187,9 @@ test('configured AppId takes precedence over runtime configuration', async () =>
   openAPIs.GenerateRtcAccessToken = jest.fn().mockRejectedValue(new Error('token unavailable'));
   await act(async () => container.querySelector('button').click());
   expect(global.fetch).not.toHaveBeenCalled();
-  expect(openAPIs.GenerateRtcAccessToken).toHaveBeenCalledWith(expect.objectContaining({ appID: 'configured-app' }));
+  expect(openAPIs.GenerateRtcAccessToken).toHaveBeenCalledWith(
+    expect.objectContaining({ appID: 'configured-app' })
+  );
 });
 
 test('runtime configuration failure allows retry before token issuance', async () => {
@@ -195,10 +202,29 @@ test('runtime configuration failure allows retry before token issuance', async (
   expect(global.fetch).toHaveBeenCalledTimes(2);
 });
 
-test.each([{}, { appId: 123 }, { appId: ' ' }])('invalid runtime AppId is rejected: %p', async (result) => {
-  global.fetch.mockResolvedValue({ ok: true, json: async () => ({ Result: result }) });
+test.each([{}, { appId: 123 }, { appId: ' ' }])(
+  'invalid runtime AppId is rejected: %p',
+  async (result) => {
+    global.fetch.mockResolvedValue({ ok: true, json: async () => ({ Result: result }) });
+    openAPIs.GenerateRtcAccessToken = jest.fn();
+    await act(async () => container.querySelector('button').click());
+    expect(openAPIs.GenerateRtcAccessToken).not.toHaveBeenCalled();
+    expect(container.textContent).toBe('Call now');
+  }
+);
+
+test('configuration rejection occurs before token issuance or RTC creation', async () => {
+  config.AppId = 'configured-app';
+  checkCallConfiguration.mockResolvedValue({
+    ready: false,
+    issues: [{ stage: 'configuration', message: 'AKOOL_API_KEY is required' }],
+  });
   openAPIs.GenerateRtcAccessToken = jest.fn();
+  RtcClient.createEngine = jest.fn();
   await act(async () => container.querySelector('button').click());
   expect(openAPIs.GenerateRtcAccessToken).not.toHaveBeenCalled();
-  expect(container.textContent).toBe('Call now');
+  expect(RtcClient.createEngine).not.toHaveBeenCalled();
+  expect(Modal.error).toHaveBeenCalledWith(
+    expect.objectContaining({ content: 'AKOOL_API_KEY is required' })
+  );
 });

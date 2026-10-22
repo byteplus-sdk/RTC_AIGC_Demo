@@ -10,6 +10,7 @@ const { Signer } = require('@byteplus/vcloud-sdk-nodejs');
 const fetch = require('node-fetch');
 const { getLlmCredentialField, getLlmApiKey } = require('./providerConfig');
 const { createAgentLifecycle } = require('./agentLifecycle');
+const { preflight } = require('./preflight');
 if (require.main === module) {
   require('dotenv').config({ path: require('path').resolve(__dirname, '../.env.local') });
 }
@@ -85,7 +86,7 @@ function validateProviderConfig(action, body, env) {
   for (const field of new Set(fields)) required(env[field], field);
 }
 
-function createApp({ fetchImpl = fetch, env = process.env } = {}) {
+function createApp({ fetchImpl = fetch, env = process.env, probeSpeech } = {}) {
   const config = loadConfig(env);
   const app = new Koa();
   const controller = new AbortController();
@@ -144,6 +145,12 @@ function createApp({ fetchImpl = fetch, env = process.env } = {}) {
   app.use(bodyParser());
 
   app.use(async (ctx) => {
+    if (ctx.method === 'POST' && ctx.path === '/preflight') {
+      const action = ctx.request.query.action;
+      if (!AGENT_ACTIONS.has(action) || !action.startsWith('Start')) ctx.throw(400, 'unsupported preflight action');
+      ctx.body = await preflight(action, ctx.request.body, env, { validate: validateProviderConfig, probe: probeSpeech });
+      return;
+    }
     if (ctx.method === 'GET' && ctx.path === '/runtimeConfig') {
       ctx.body = { Result: { appId: config.appId } };
       return;

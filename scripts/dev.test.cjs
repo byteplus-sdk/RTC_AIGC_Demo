@@ -83,3 +83,10 @@ test('Windows shutdown requests termination of both process trees', () => {
   assert.deepEqual(Array.from(calls[2].args), ['/PID', '100', '/T', '/F']);
   assert.deepEqual(Array.from(calls[3].args), ['/PID', '101', '/T', '/F']);
 });
+
+
+test('development server routes preflight requests to the API server', () => {
+  const sandbox = { module: { exports: {} }, __dirname: path.join(__dirname, '../web'), process: {env: {SERVER_PORT: '3101'}}, require: name => name === 'path' ? path : {} };
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../web/craco.config.js'), 'utf8'), sandbox);
+  assert.equal(sandbox.module.exports.devServer.proxy['/preflight'], 'http://localhost:3101');
+});

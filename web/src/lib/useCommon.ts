@@ -9,6 +9,7 @@ import BytePlusRTC, { MediaType } from '@byteplus/rtc';
 import { Modal } from '@arco-design/web-react';
 import Utils from '@/utils/utils';
 import openAPIs from '@/app/index';
+import { checkCallConfiguration } from '@/app/preflight';
 import RtcClient from '@/lib/RtcClient';
 import {
   clearHistoryMsg,
@@ -103,6 +104,9 @@ export const useJoin = (): [
         }
         aigcConfig.AppId = appId;
       }
+      const readiness = await checkCallConfiguration(aigcConfig.config);
+      if (!readiness.ready)
+        throw new Error(readiness.issues.map((issue) => issue.message).join('\n'));
       let token = aigcConfig.Token;
       if (!token) {
         // Generate token using API
