@@ -40,6 +40,9 @@ export class VoiceChatManager {
   }
 
   setProvider(module: ModuleType, provider: Provider) {
+    if (module === ModuleType.Avatar && provider !== Provider.None && provider !== Provider.Akool) {
+      throw new Error('Flexible avatars require Akool');
+    }
     (this[module] as { provider: Provider }).provider = provider;
   }
 

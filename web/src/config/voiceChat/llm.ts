@@ -116,12 +116,12 @@ export class LLMManager {
   #paramsMap: Record<
     Provider.Byteplus | Provider.OpenAI | Provider.Google | Provider.CustomLLM,
     {
-      Mode: 'BytePlusArk' | 'CustomLLM';
+      Provider?: 'BytePlus' | 'OpenAI';
+      Mode?: 'CustomLLM';
       EndPointId?: string;
       Url?: string;
       APIKey?: string;
       SystemMessages?: string[];
-      UserMessages?: string[];
       ModelName?: string;
     }
   >;
@@ -130,7 +130,7 @@ export class LLMManager {
     this.provider = Provider.Byteplus;
     this.#paramsMap = {
       [Provider.Byteplus]: {
-        Mode: 'BytePlusArk',
+        Provider: 'BytePlus',
         EndPointId: ArkModel[ModelNames.Seed21Turbo].endPointId,
       },
       [Provider.Google]: {
@@ -140,10 +140,9 @@ export class LLMManager {
       [Provider.CustomLLM]: { Url: this.url, Mode: 'CustomLLM' },
       [Provider.OpenAI]: {
         Url: 'https://api.openai.com/v1/chat/completions',
-        Mode: 'CustomLLM',
+        Provider: 'OpenAI',
         ModelName: OpenAiModel['GPT-4o'].endPointId,
         SystemMessages: [],
-        UserMessages: [],
       },
     };
   }

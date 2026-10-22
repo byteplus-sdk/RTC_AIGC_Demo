@@ -35,7 +35,6 @@ const AKOOL_AVATAR = {
 
 export const AvatarMap = {
   [Provider.None]: {},
-  [Provider.Byteplus]: BYTEPLUS_AVATAR,
   [Provider.Akool]: AKOOL_AVATAR,
 };
 
@@ -55,8 +54,7 @@ export type IAvatarType = BYTE_PLUS_AVATAR_TYPE | AKOOL_AVATAR_TYPE | (string & 
 export class AvatarManager {
   provider: Provider.None | Provider.Byteplus | Provider.Akool = Provider.None;
 
-  avatarRoleId: IAvatarType =
-    AvatarMap[Provider.Byteplus][BYTE_PLUS_AVATAR_TYPE.Linyunzhi].avatarRole;
+  avatarRoleId: IAvatarType = BYTE_PLUS_AVATAR_TYPE.Linyunzhi;
 
   backgroundUrl =
     'https://mediaservice-fe.volccdn.com/obj/vcloud-fe/aigc/static/image/CHILDREN_ENCYCLOPEDIA_BG.c1d3284c.png';

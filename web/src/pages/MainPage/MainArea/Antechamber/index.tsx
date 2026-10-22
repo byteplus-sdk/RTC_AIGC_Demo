@@ -14,7 +14,7 @@ import style from './index.module.less';
 function Antechamber() {
   const dispatch = useDispatch();
   const [joining, dispatchJoin] = useJoin();
-  const username = aigcConfig.config.UserId;
+  const username = aigcConfig.UserId;
   const roomId = aigcConfig.config.RoomId;
 
   const handleJoinRoom = () => {

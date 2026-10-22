@@ -265,18 +265,15 @@ export class ConfigFactory {
     const params = {
       AppId: this.AppId,
       RoomId: this.RoomId,
-      UserId: this.UserId,
       TaskId: this.UserId,
       AgentConfig: {
-        EnableConversationStateCallback: true,
+        ...(isRealTimeCallMode()
+          ? { UserId: this.BotName }
+          : { UserID: this.BotName, EnableConversationStateCallback: true }),
         /**
          * @note UserId of the client
          */
         TargetUserID: [this.UserId],
-        /**
-         * @note The name of the chat agent in the room.
-         */
-        UserID: this.BotName,
         WelcomeMessage: this.WelcomeMessage,
       },
       ...this.#manager.config,

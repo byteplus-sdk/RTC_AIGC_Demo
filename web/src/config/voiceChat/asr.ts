@@ -21,7 +21,7 @@ export class ASRManager {
 
   #paramsMap: {
     [Provider.Amazon]: {
-      Provider: Provider.Amazon;
+      Provider: 'Amazon';
       ProviderParams: {
         /**
          * @brief Create new access keys for an IAM user.
@@ -148,7 +148,7 @@ export class ASRManager {
     this.provider = Provider.Byteplus;
     this.#paramsMap = {
       [Provider.Amazon]: {
-        Provider: Provider.Amazon,
+        Provider: 'Amazon',
         ProviderParams: {
           Region: 'us-west-2',
           Language: 'en-US',
@@ -188,6 +188,7 @@ export class ASRManager {
     switch (this.provider) {
       case Provider.Byteplus: {
         const bp = this.#paramsMap[this.provider].ProviderParams;
+        bp.Language = this.language === 'en-US' ? 'en-US' : 'zh-CN';
         bp.ApiResourceId =
           this.seedAsrVersion === '2.0'
             ? 'volc.seedasr.sauc.duration'

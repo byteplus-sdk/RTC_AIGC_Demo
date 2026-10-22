@@ -191,7 +191,7 @@ export class TTSManager {
       };
     };
     [Provider.Amazon]: {
-      Provider: Provider.Amazon;
+      Provider: 'Amazon';
       ProviderParams: {
         /**
          * @note Injected by server, refer to Server/sensitive.js.
@@ -215,7 +215,7 @@ export class TTSManager {
       };
     };
     [Provider.OpenAI]: {
-      Provider: Provider.OpenAI;
+      Provider: 'OpenAI';
       ProviderParams: {
         /**
          * @note Fixed value, `https://api.openai.com/v1/audio/speech`.
@@ -234,8 +234,6 @@ export class TTSManager {
          * @refer https://platform.openai.com/docs/guides/text-to-speech#voice-options
          */
         Voice: OPENAI_VOICE_TYPE;
-        Language: 'en-US';
-        Region: 'us-west-2';
         Speed?: string;
       };
     };
@@ -248,7 +246,6 @@ export class TTSManager {
           Name: string;
         };
         StreamingAudioConfig: {
-          SampleRateHertz: number;
           SpeakingRate: number;
         };
       };
@@ -269,7 +266,7 @@ export class TTSManager {
         },
       },
       [Provider.Amazon]: {
-        Provider: Provider.Amazon,
+        Provider: 'Amazon',
         ProviderParams: {
           VoiceID: VoiceMap[Provider.Amazon].MATTHEW,
           Region: 'us-west-2',
@@ -277,13 +274,11 @@ export class TTSManager {
         },
       },
       [Provider.OpenAI]: {
-        Provider: Provider.OpenAI,
+        Provider: 'OpenAI',
         ProviderParams: {
           // URL: 'https://api.openai.com/v1/audio/speech',
           Model: 'tts-1',
           Voice: VoiceMap[Provider.OpenAI].ALLOY,
-          Language: 'en-US',
-          Region: 'us-west-2',
           Speed: '1.0',
         },
       },
@@ -295,7 +290,6 @@ export class TTSManager {
             Name: VoiceMap[Provider.Google].Aoede,
           },
           StreamingAudioConfig: {
-            SampleRateHertz: 24000,
             SpeakingRate: 1.0,
           },
         },

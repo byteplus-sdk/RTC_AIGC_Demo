@@ -3,7 +3,7 @@
  * SPDX-license-identifier: BSD-3-Clause
  */
 const merge = require('lodash/merge');
-const { isGoogleLlm } = require('./providerConfig');
+const { getLlmApiKey, getSpeechProviderKey } = require('./providerConfig');
 
 const AVATAR_PROVIDER = {
   VOLCANO: 'Volcano',
@@ -235,26 +235,20 @@ const injectSensitiveInfo = (body, isVoiceChatMode) => {
     if (body?.Config?.ASRConfig?.ProviderParams) {
       body.Config.ASRConfig.ProviderParams = merge(
         body.Config?.ASRConfig?.ProviderParams,
-        VOICE_CHAT_MODE.ASRConfig.ProviderParams[body.Config?.ASRConfig?.Provider]
+        VOICE_CHAT_MODE.ASRConfig.ProviderParams[getSpeechProviderKey(body.Config?.ASRConfig?.Provider)]
       );
     }
     if (body?.Config?.TTSConfig?.ProviderParams) {
       body.Config.TTSConfig.ProviderParams = merge(
         body.Config?.TTSConfig?.ProviderParams,
         VOICE_CHAT_MODE.TTSConfig.ProviderParams[
-          body.Config.TTSConfig.Provider === 'byteplus_Bidirectional_streaming'
-            ? 'BytePlus' : body.Config.TTSConfig.Provider
+          getSpeechProviderKey(body.Config.TTSConfig.Provider)
         ]
       );
     }
     if (body?.Config?.LLMConfig) {
-      body.Config.LLMConfig = merge(
-        body.Config?.LLMConfig,
-        VOICE_CHAT_MODE.LLMConfig[body.Config?.LLMConfig?.Mode]
-      );
-      if (body.Config.LLMConfig.Mode === 'CustomLLM' && isGoogleLlm(body.Config.LLMConfig)) {
-        body.Config.LLMConfig.APIKey = process.env.GOOGLE_LLM_API_KEY || '';
-      }
+      body.Config.LLMConfig.APIKey = getLlmApiKey(body.Config.LLMConfig, process.env) ||
+        VOICE_CHAT_MODE.LLMConfig[body.Config.LLMConfig.Mode]?.APIKey || 'Your API Key';
     }
     if (body?.Config?.AvatarConfig) {
       body.Config.AvatarConfig = mergeAvatarSensitiveByProvider(
@@ -272,6 +266,10 @@ const injectSensitiveInfo = (body, isVoiceChatMode) => {
     if (webSearch?.Enable === true && AskEchoSearchAgentAPIKey) {
       body.Config.WebSearchAgentConfig = merge(webSearch, {
         APIKey: AskEchoSearchAgentAPIKey,
+        ParamsString: JSON.stringify({
+          ...JSON.parse(webSearch.ParamsString || '{}'),
+          ...(process.env.ASKECHO_BOT_ID ? { bot_id: process.env.ASKECHO_BOT_ID } : {}),
+        }),
       });
     }
   } else {
