@@ -10,8 +10,8 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-redux": "^8.0.2",
-    "react-router": "^6.3.0",
-    "react-router-dom": "^6.3.0",
+    "react-router": "^8.5.1",
+    "react-router-dom": "^7.18.5",
     "redux": "^4.2.0",
     "uuid": "^8.3.2",
     "lodash": "^4.17.21"
