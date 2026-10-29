@@ -53,7 +53,7 @@ function Antechamber() {
 
   const handleJoinRoom = () => {
     if (!joining && readiness?.ready) {
-      dispatch(updateFullScreen({ isFullScreen: false })); // 初始化
+      dispatch(updateFullScreen({ isFullScreen: false }));
       dispatchJoin(
         {
           username,

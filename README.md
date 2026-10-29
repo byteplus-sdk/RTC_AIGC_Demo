@@ -1,53 +1,55 @@
 # Conversational AI Demo
 
-Demo Online: https://demo.byteplus.com/rtc/solution/aigc
+A React demo for voice and video conversations with AI agents using BytePlus RTC,
+speech recognition, language models, and text-to-speech.
 
-## Introduction
-- In the AIGC conversation scenario, the Volcengine AIGC - RTC Server cloud service provides an end - to - end AIGC capability link based on streaming voice by integrating RTC audio and video stream processing, ASR voice recognition, large - model interface call integration, and TTS voice generation capabilities.
-- Users only need to call the standard - based OpenAPI interfaces to configure the required ASR, LLM, and TTS types and parameters. The Volcengine cloud computing service is responsible for edge user access, cloud resource scheduling, audio and video stream compression, text - to - voice conversion processing, and data subscription and transmission. This simplifies the development process, allowing developers to focus more on the training and debugging of the core capabilities of large models, thus rapidly promoting the innovation of AIGC product applications.
-- At the same time, Volcengine RTC has mature technologies such as audio 3A processing and video processing, as well as large - scale audio and video chat capabilities. It can enable AIGC products to more conveniently support scenarios such as multimodal interaction and multi - person interaction, maintaining the naturalness and efficiency of interaction.
+[Online demo](https://demo.byteplus.com/rtc/solution/aigc)
 
-## Setup and Configuration
+## Setup and configuration
 
-Requires Node.js 18 or later. Run in the repository root:
+Use Node.js 22 (>=22.13) and npm 10. Run from the repository root:
 
 ```shell
+nvm use
 npm run setup
 cp .env.example .env.local
 ```
 
-Fill in `.env.local` following the comments in [.env.example](.env.example):
+Set `RTC_APP_ID`, `RTC_APP_KEY`, `BYTEPLUS_ACCESS_KEY_ID`, and
+`BYTEPLUS_SECRET_ACCESS_KEY` in `.env.local`.
 
-- **Both modes:** `RTC_APP_ID`, `RTC_APP_KEY`, `BYTEPLUS_ACCESS_KEY_ID`, `BYTEPLUS_SECRET_ACCESS_KEY`.
-- **Realtime:** add `OPENAI_API_KEY`.
-- **Flexible:** choose ASR, LLM and TTS providers in the UI, then fill their credential groups. Custom LLM uses `CUSTOM_LLM_API_KEY`, falling back to `OPENAI_API_KEY`.
-- **Optional features:** fill search or avatar credentials when enabled.
-- **Local settings:** `PORT=3000`, `SERVER_PORT=3001`; an empty `REACT_APP_AIGC_PROXY_HOST` uses the development proxy.
+- Flexible mode: configure credentials for the ASR, LLM, and TTS providers selected in the UI.
+- Realtime mode: set `OPENAI_API_KEY`.
 
+[.env.example](.env.example) lists the provider and optional feature settings.
 Get credentials from the [RTC console](https://console.byteplus.com/rtc/listRTC),
-[IAM key management](https://console.byteplus.com/iam/keymanage) and
+[IAM key management](https://console.byteplus.com/iam/keymanage), and
 [ModelArk console](https://console.byteplus.com/ark/region:ark+ap-southeast-1/endpoint).
-Enable the selected ASR/TTS services for your BytePlus speech application.
-`.env.local` is excluded from Git.
+Enable the selected ASR/TTS services for your speech application.
+Git excludes `.env.local`; restart the services after editing it.
 
-## Quick Start
+`BYTEPLUS_MODEL_ENDPOINT_ID` sets the default Seed model endpoint.
+`BYTEPLUS_MODEL_ENDPOINTS` maps model names to endpoint IDs as a JSON object.
+You can edit model settings in Configure. `SESSION_DURATION_SECONDS` sets the
+session limit (default: 1800 seconds).
 
-Start the server and web application in Realtime mode:
+## Quick start
 
 ```shell
 npm run dev
 ```
 
-For Flexible mode:
+This starts the API and web app in Realtime mode. Use `npm run dev:flexible`
+for Flexible mode, then open the web URL printed at startup.
 
-```shell
-npm run dev:flexible
-```
+The web app selects an available port starting at 3000. Set `PORT` to require
+a specific port; `SERVER_PORT` defaults to 3001. Startup reports missing
+configuration and occupied ports. `GET /health` checks API availability.
 
-Open http://localhost:3000. The API server runs at http://localhost:3001.
-Both commands load the root `.env.local`. Restart after changing configuration.
+To run the services in separate terminals, use `npm run dev:server` and
+`npm run dev:web` (or `npm run dev:web:flexible`).
 
-**Validation and Build**
+## Validation and build
 
 ```shell
 npm run typecheck
@@ -55,33 +57,31 @@ npm test
 npm run build
 ```
 
-The production web output is written to `web/build/`.
-For production builds, set `REACT_APP_AIGC_PROXY_HOST` to the API server URL.
-`REACT_APP_RTC_APP_ID` takes precedence when set; otherwise the browser reads
-`RTC_APP_ID` from the API server on first join. Reload the page after changing it.
-For Flexible mode with ModelArk, also set `REACT_APP_MODEL_ENDPOINT_ID` at build time.
+The build writes to `web/dist/`. Set `REACT_APP_AIGC_PROXY_HOST` to the deployed
+API URL before building. For Flexible mode with ModelArk, set
+`REACT_APP_MODEL_ENDPOINT_ID` to populate the default endpoint.
+`REACT_APP_RTC_APP_ID` overrides the AppID returned by the API server.
 
-### FAQ
-| Issue | Solution |
+## Troubleshooting
+
+| Issue | Check |
 | :-- | :-- |
-| **After starting the AI agent, there is no response to conversation, or it keeps showing "AI preparing..."** | <li>This may be due to incomplete console permissions. Please refer to the [setup process](https://docs.byteplus.com/en/docs/byteplus-rtc/docs-1315561) to confirm all required operations are completed. This is the most likely cause, so please carefully verify that all necessary permissions have been granted.</li><li>There may be parameter issues, such as case sensitivity or type errors. Please double-check for these types of problems.</li><li>Related resources may not be enabled or there may be insufficient quota/overdue payments. Please verify again.</li><li>**Check `BYTEPLUS_MODEL_ENDPOINT_ID` and the provider credentials in `.env.local`.**</li> |
-| **Browser shows `Uncaught (in promise) r: token_error` error** | Please check if the RTC Token filled in your project is valid. Verify that the UserId, RoomId used to generate the Token, and the Token itself match what's configured in the project. The Token may also be expired - try regenerating it. |
-| **[StartVoiceChat]Failed(Reason: The task has been started. Please do not call the startup task interface repeatedly.)** error | If you've set fixed values for RoomId and UserId, repeatedly calling startAudioBot will cause errors. Simply call stopAudioBot first, then call startAudioBot again. |
-| Why aren't my devices working normally even though my microphone and camera are functioning? | This may be due to device permissions not being granted. Please check device permission settings. |
-| API calls return "Invalid 'Authorization' header, Pls check your authorization header" error | Check `BYTEPLUS_ACCESS_KEY_ID` and `BYTEPLUS_SECRET_ACCESS_KEY` in `.env.local`. |
-| What is RTC? | **R**eal **T**ime **C**ommunication. For more information about RTC concepts, please refer to the [official documentation](https://docs.byteplus.com/en/docs/byteplus-rtc/docs-66812). |
+| No response or stuck on "AI preparing..." | Review the provider check in the UI, credentials in `.env.local`, service activation, and quota. See the [setup guide](https://docs.byteplus.com/en/docs/byteplus-rtc/docs-1315561). |
+| `token_error` | Check the token request in the browser's Network panel and the API logs. Confirm that the AppID, RoomId, and UserId match the token. |
+| "The task has been started" | Stop the existing conversation before starting another with the same RoomId and UserId. |
+| Microphone or camera unavailable | Check browser and operating system device permissions. |
+| "Invalid 'Authorization' header" | Check `BYTEPLUS_ACCESS_KEY_ID` and `BYTEPLUS_SECRET_ACCESS_KEY` in `.env.local`. |
 
-If you encounter issues beyond those listed above, please feel free to contact us for feedback.
+## Related documentation
 
-### Related Documentation
 - [Overview](https://docs.byteplus.com/en/docs/byteplus-rtc/docs-1310537)
-- [Demo Experience](https://docs.byteplus.com/en/docs/byteplus-rtc/docs-1310559)
-- [Solution Integration](https://docs.byteplus.com/en/docs/byteplus-rtc/docs-1310560)
+- [Demo experience](https://docs.byteplus.com/en/docs/byteplus-rtc/docs-1310559)
+- [Solution integration](https://docs.byteplus.com/en/docs/byteplus-rtc/docs-1310560)
+- [API server](server/README.md)
 
 ## Security and privacy
 
-This project takes security seriously.
-For vulnerability reporting and supported versions, see [SECURITY.md](SECURITY.md)
+See [SECURITY.md](SECURITY.md) for vulnerability reporting.
 
 ## Changelog
 
@@ -116,12 +116,3 @@ Refer to [OpenAPI Updates](https://docs.byteplus.com/en/docs/byteplus-rtc/docs-1
     - Modify the Endpoint ID of Byteplus Ark Model. which needs to be filled in by the user.
 - 2025-06-06
     - Initial Release
-
-### Model and session settings
-
-`BYTEPLUS_MODEL_ENDPOINT_ID` configures the default Seed model endpoint.
-`BYTEPLUS_MODEL_ENDPOINTS` accepts a JSON object mapping the model names shown in Configure to your endpoint IDs. Each selected ModelArk endpoint can also be edited in Configure.
-
-Google LLM models use `GOOGLE_LLM_API_KEY`. Custom LLMs use `CUSTOM_LLM_URL` and `CUSTOM_LLM_API_KEY`; the URL and model name can be edited in Configure. Credentials stay in the server environment.
-
-`SESSION_DURATION_SECONDS` sets the local demo session limit (default: 1800 seconds). The sidebar displays the remaining session time and the demo leaves the room when the limit expires.

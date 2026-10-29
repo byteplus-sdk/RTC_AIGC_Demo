@@ -24,7 +24,6 @@ function AIAvatarReadying() {
           />
 
           <defs>
-            {/* 原始渐变 */}
             <linearGradient
               id="paint0_linear"
               x1="142.5"
@@ -39,7 +38,6 @@ function AIAvatarReadying() {
               <stop offset="0.519953" stopColor="white" stopOpacity="0" />
               <stop offset="1" stopColor="white" stopOpacity="0" />
 
-              {/* 添加动画效果，使渐变沿着路径运动 */}
               <animate attributeName="x1" values="0; 457; 0" dur="4s" repeatCount="indefinite" />
               <animate
                 attributeName="y1"
