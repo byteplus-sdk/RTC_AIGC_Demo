@@ -3,7 +3,7 @@
  * SPDX-license-identifier: BSD-3-Clause
  */
 
-/// <reference types="react-scripts" />
+/// <reference types="vite/client" />
 
 declare module '*.less' {
   const content: { [className: string]: string };

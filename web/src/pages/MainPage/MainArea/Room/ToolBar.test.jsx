@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
@@ -8,32 +9,31 @@ import { getSceneSettings, SCENE } from '@/config/scene';
 import RtcClient from '@/lib/RtcClient';
 import ToolBar from './ToolBar';
 
-jest.mock('@byteplus/rtc', () => ({
-  __esModule: true,
+vi.mock('@byteplus/rtc', () => ({
   default: { events: { onTrackEnded: 'track-ended' } },
   MediaType: { VIDEO: 2 },
   StreamIndex: { STREAM_INDEX_MAIN: 0, STREAM_INDEX_SCREEN: 1 },
   NetworkQuality: { UNKNOWN: 0 },
 }));
-jest.mock('@/lib/RtcClient', () => ({
+vi.mock('@/lib/RtcClient', () => ({ default: ({
   engine: {
-    on: jest.fn(),
-    off: jest.fn(),
-    startScreenCapture: jest.fn(),
-    stopScreenCapture: jest.fn(),
-    startVideoCapture: jest.fn(),
-    stopVideoCapture: jest.fn(),
-    publishStream: jest.fn(),
-    unpublishStream: jest.fn(),
-    publishScreen: jest.fn(),
-    unpublishScreen: jest.fn(),
+    on: vi.fn(),
+    off: vi.fn(),
+    startScreenCapture: vi.fn(),
+    stopScreenCapture: vi.fn(),
+    startVideoCapture: vi.fn(),
+    stopVideoCapture: vi.fn(),
+    publishStream: vi.fn(),
+    unpublishStream: vi.fn(),
+    publishScreen: vi.fn(),
+    unpublishScreen: vi.fn(),
   },
+}) }));
+vi.mock('@/lib/useCommon', () => ({
+  useDeviceState: () => ({ isAudioPublished: true, switchMic: vi.fn() }),
+  useLeave: () => vi.fn(),
 }));
-jest.mock('@/lib/useCommon', () => ({
-  useDeviceState: () => ({ isAudioPublished: true, switchMic: jest.fn() }),
-  useLeave: () => jest.fn(),
-}));
-jest.mock('../../Menu', () => () => null);
+vi.mock('../../Menu', () => ({ default: () => null }));
 
 let container;
 let root;
@@ -97,9 +97,9 @@ for (const outcome of ['resolve', 'reject']) {
     await act(async () => container.querySelector('[aria-label="Share screen"]').click());
     act(() => root.render(null));
     const newEngine = {
-      publishScreen: jest.fn(),
-      stopScreenCapture: jest.fn(),
-      off: jest.fn(),
+      publishScreen: vi.fn(),
+      stopScreenCapture: vi.fn(),
+      off: vi.fn(),
     };
     RtcClient.engine = newEngine;
     await act(async () => completeCapture());
@@ -140,7 +140,7 @@ test('pending camera acquisition stays attached to its originating engine', asyn
   );
   await act(async () => container.querySelector('[aria-label="Turn on camera"]').click());
   act(() => root.render(null));
-  RtcClient.engine = { publishStream: jest.fn(), stopVideoCapture: jest.fn() };
+  RtcClient.engine = { publishStream: vi.fn(), stopVideoCapture: vi.fn() };
   await act(async () => complete());
   expect(engine.publishStream).not.toHaveBeenCalled();
   expect(engine.stopVideoCapture).toHaveBeenCalled();
@@ -173,9 +173,9 @@ test('pending camera unpublication cannot change a replacement session', async (
   await act(async () => container.querySelector('[aria-label="Share screen"]').click());
   act(() => root.render(null));
   RtcClient.engine = {
-    startScreenCapture: jest.fn(),
-    publishScreen: jest.fn(),
-    stopVideoCapture: jest.fn(),
+    startScreenCapture: vi.fn(),
+    publishScreen: vi.fn(),
+    stopVideoCapture: vi.fn(),
   };
   store.dispatch(updateLocalUser({ userId: 'replacement-user', publishVideo: true }));
   const replacementUser = store.getState().room.localUser;

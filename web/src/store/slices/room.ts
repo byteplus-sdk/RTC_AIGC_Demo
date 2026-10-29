@@ -284,7 +284,11 @@ export const roomSlice = createSlice({
           lastMsg.paragraph = paragraph;
           lastMsg.definite = definite;
           lastMsg.user = payload.user;
-          fromBot ? (state.isAITalking = !paragraph) : (state.isUserTalking = !paragraph);
+          if (fromBot) {
+            state.isAITalking = !paragraph;
+          } else {
+            state.isUserTalking = !paragraph;
+          }
         }
       } else {
         /** The first word of the first sentence will not be interrupted */

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Provider as ReduxProvider } from 'react-redux';
@@ -9,24 +10,24 @@ import roomReducer, { updateAIConfig } from '@/store/slices/room';
 import RtcClient from '@/lib/RtcClient';
 import AISettings from './index';
 
-jest.mock('@byteplus/rtc', () => ({
+vi.mock('@byteplus/rtc', () => ({
   StreamIndex: { STREAM_INDEX_SCREEN: 1 },
   NetworkQuality: { UNKNOWN: 0 },
 }));
-jest.mock('@/lib/RtcClient', () => ({ updateAgent: jest.fn() }));
-jest.mock('@arco-design/web-react', () => ({
+vi.mock('@/lib/RtcClient', () => ({ default: ({ updateAgent: vi.fn() }) }));
+vi.mock('@arco-design/web-react', () => ({
   Button: ({ children, onClick }) => <button onClick={onClick}>{children}</button>,
   Drawer: ({ visible, children, footer }) => visible ? <div>{children}{footer}</div> : null,
-  Message: { error: jest.fn() },
+  Message: { error: vi.fn() },
   Radio: { Group: () => null },
   Tag: ({ children }) => <span>{children}</span>,
   Input: Object.assign(() => null, { TextArea: () => null }),
 }));
-jest.mock('../CheckBoxSelector', () => ({ label, onChecked }) => (
+vi.mock('../CheckBoxSelector', () => ({ default: ({ label, onChecked }) => (
   label === 'LLM Models' ? <button onClick={() => onChecked('openai')}>Use OpenAI</button> : null
-));
-jest.mock('../TitleCard', () => ({ children }) => <div>{children}</div>);
-jest.mock('../CheckIcon', () => () => null);
+) }));
+vi.mock('../TitleCard', () => ({ default: ({ children }) => <div>{children}</div> }));
+vi.mock('../CheckIcon', () => ({ default: () => null }));
 
 test.each([true, false])('provider configuration preserves web search, changed=%s', async (changed) => {
   global.IS_REACT_ACT_ENVIRONMENT = true;

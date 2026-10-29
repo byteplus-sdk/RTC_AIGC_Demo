@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
@@ -7,12 +8,11 @@ import { checkCallConfiguration } from '@/app/preflight';
 import { useJoin } from '@/lib/useCommon';
 import Antechamber from './index';
 
-jest.mock('@/store/slices/room', () => ({updateFullScreen: payload => ({type:'fullscreen',payload})}));
-jest.mock('@/app/preflight', () => ({ checkCallConfiguration: jest.fn() }));
-jest.mock('@/lib/useCommon', () => ({ useJoin: jest.fn() }));
-jest.mock('@/components/AIChangeCard', () => () => null);
-jest.mock('@/config', () => ({
-  __esModule: true,
+vi.mock('@/store/slices/room', () => ({updateFullScreen: payload => ({type:'fullscreen',payload})}));
+vi.mock('@/app/preflight', () => ({ checkCallConfiguration: vi.fn() }));
+vi.mock('@/lib/useCommon', () => ({ useJoin: vi.fn() }));
+vi.mock('@/components/AIChangeCard', () => ({ default: () => null }));
+vi.mock('@/config', () => ({
   default: {
     UserId: 'user',
     config: { RoomId: 'room', Config: { LLMConfig: { EndPointId: 'ep-first' } } },
@@ -21,7 +21,7 @@ jest.mock('@/config', () => ({
 let root, container, store, join;
 beforeEach(() => {
   global.IS_REACT_ACT_ENVIRONMENT = true;
-  join = jest.fn();
+  join = vi.fn();
   useJoin.mockReturnValue([false, join]);
   checkCallConfiguration.mockReset();
   config.config.Config.LLMConfig.EndPointId = 'ep-first';

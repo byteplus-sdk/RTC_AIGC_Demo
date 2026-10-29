@@ -42,7 +42,7 @@ export enum THINKING_TYPE {
 
 const endpointMap: Record<string, string> = (() => {
   try {
-    const value = JSON.parse(process.env.REACT_APP_MODEL_ENDPOINTS || '{}');
+    const value = JSON.parse(import.meta.env.REACT_APP_MODEL_ENDPOINTS || '{}');
     return Object.fromEntries(
       Object.entries(value).filter(
         (entry): entry is [string, string] => typeof entry[1] === 'string'
@@ -66,7 +66,7 @@ export const ArkModel = Object.fromEntries(
       endPointId:
         endpointMap[name] ||
         (name === ModelNames.Seed21Turbo
-          ? process.env.REACT_APP_MODEL_ENDPOINT_ID || 'Your model ID'
+          ? import.meta.env.REACT_APP_MODEL_ENDPOINT_ID || 'Your model ID'
           : ''),
       description: 'Multimodal · Deep Thinking',
       icon: ArkSVG,
@@ -107,7 +107,7 @@ export const isDeepThinkingMode = (model: string) => Object.hasOwn(ArkModel, mod
 export class LLMManager {
   provider: Provider.Byteplus | Provider.OpenAI | Provider.Google | Provider.CustomLLM;
 
-  url = process.env.REACT_APP_CUSTOM_LLM_URL || '';
+  url = import.meta.env.REACT_APP_CUSTOM_LLM_URL || '';
 
   systemMessages: string[] = [];
 

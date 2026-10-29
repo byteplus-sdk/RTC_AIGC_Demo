@@ -85,8 +85,20 @@ test('Windows shutdown requests termination of both process trees', () => {
 });
 
 
-test('development server routes preflight requests to the API server', () => {
-  const sandbox = { module: { exports: {} }, __dirname: path.join(__dirname, '../web'), process: {env: {SERVER_PORT: '3101'}}, require: name => name === 'path' ? path : {} };
-  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../web/craco.config.js'), 'utf8'), sandbox);
-  assert.equal(sandbox.module.exports.devServer.proxy['/preflight'], 'http://localhost:3101');
+test('development proxy matches the API listener and uses an explicit port', async () => {
+  const { default: configure } = await import('../web/vite.config.mjs');
+  const previous = { SERVER_PORT: process.env.SERVER_PORT, PORT: process.env.PORT, HOST: process.env.HOST };
+  try {
+    Object.assign(process.env, { SERVER_PORT: '3101', PORT: '3100', HOST: '127.0.0.1' });
+    const config = configure({ mode: 'development' });
+    assert.equal(config.server.proxy['/preflight'].target, 'http://127.0.0.1:3101');
+    assert.equal(config.server.port, 3100);
+    assert.equal(config.server.strictPort, true);
+    assert.equal(config.envPrefix, 'REACT_APP_');
+  } finally {
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
 });

@@ -63,15 +63,12 @@ import {
 import { AvatarMap, RealtimeAvatarMap } from '@/config/voiceChat/avatar';
 import styles from './index.module.less';
 
-const formatOptions = (options: Provider[], provider?: Provider) =>
-  options.map((key) => {
-    return {
-      key,
-      label: utils.capitalizeFirstLetter(key),
-      value: key,
-      icon: VendorSVG[provider || key],
-    };
-  });
+type ProviderOption = {
+  key: Provider;
+  label: string;
+  value: Provider;
+  icon: string;
+};
 
 function getAsrVendorLabel(provider: Provider): string {
   const row = ASR_PROVIDER_OPTIONS.find((o) => o.value === provider);
@@ -101,7 +98,7 @@ const formatVoiceTypeOptions = (
   },
   scene?: SCENE
 ) => {
-  return Object.keys(options).reduce<Record<string, ReturnType<typeof formatOptions>>>(
+  return Object.keys(options).reduce<Record<string, ProviderOption[]>>(
     (acc, key) => {
       const provider = key as Provider;
       const voices = Object.fromEntries(
@@ -136,7 +133,7 @@ const formatVoiceTypeOptions = (
 const formatModelTypeOptions = (options: {
   [key in Provider]?: { [key: string]: any };
 }) => {
-  return Object.keys(options).reduce<Record<string, ReturnType<typeof formatOptions>>>(
+  return Object.keys(options).reduce<Record<string, ProviderOption[]>>(
     (acc, key) => {
       const provider = key as Provider;
       const models = options[provider];
@@ -158,7 +155,7 @@ const formatModelTypeOptions = (options: {
 const formatAvatarTypeOptions = (options: {
   [key in Provider]?: { [key: string]: any };
 }) => {
-  const result = Object.keys(options).reduce<Record<string, ReturnType<typeof formatOptions>>>(
+  const result = Object.keys(options).reduce<Record<string, ProviderOption[]>>(
     (acc, key) => {
       const provider = key as Provider;
       const avatar = options[provider];

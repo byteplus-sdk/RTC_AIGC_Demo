@@ -194,7 +194,7 @@ export const useJoin = (): [
         dispatch(updateAIGCState({ isAIGCEnable: false }));
         dispatch(clearHistoryMsg());
       }
-      const proxyHost = process.env.REACT_APP_AIGC_PROXY_HOST || 'http://localhost:3001';
+      const proxyHost = import.meta.env.REACT_APP_AIGC_PROXY_HOST || 'http://localhost:3001';
       Modal.error({
         title: 'Unable to start conversation',
         content:
@@ -283,12 +283,18 @@ export const useDeviceState = () => {
 
   const switchMic = (publish = true) => {
     if (publish) {
-      !isAudioPublished
-        ? RtcClient.publishStream(MediaType.AUDIO)
-        : RtcClient.unpublishStream(MediaType.AUDIO);
+      if (!isAudioPublished) {
+        RtcClient.publishStream(MediaType.AUDIO);
+      } else {
+        RtcClient.unpublishStream(MediaType.AUDIO);
+      }
     }
     queryDevices(MediaType.AUDIO);
-    !isAudioPublished ? RtcClient.startAudioCapture() : RtcClient.stopAudioCapture();
+    if (!isAudioPublished) {
+      RtcClient.startAudioCapture();
+    } else {
+      RtcClient.stopAudioCapture();
+    }
     dispatch(
       updateLocalUser({
         publishAudio: !localUser.publishAudio,
@@ -298,12 +304,18 @@ export const useDeviceState = () => {
 
   const switchCamera = (publish = true) => {
     if (publish) {
-      !isVideoPublished
-        ? RtcClient.publishStream(MediaType.VIDEO)
-        : RtcClient.unpublishStream(MediaType.VIDEO);
+      if (!isVideoPublished) {
+        RtcClient.publishStream(MediaType.VIDEO);
+      } else {
+        RtcClient.unpublishStream(MediaType.VIDEO);
+      }
     }
     queryDevices(MediaType.VIDEO);
-    !localUser.publishVideo ? RtcClient.startVideoCapture() : RtcClient.stopVideoCapture();
+    if (!localUser.publishVideo) {
+      RtcClient.startVideoCapture();
+    } else {
+      RtcClient.stopVideoCapture();
+    }
     dispatch(
       updateLocalUser({
         publishVideo: !localUser.publishVideo,

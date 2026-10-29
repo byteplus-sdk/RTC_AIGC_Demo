@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
@@ -9,19 +10,18 @@ import openAPIs from '@/app/index';
 import RtcClient from '@/lib/RtcClient';
 import { useJoin, useLeave } from './useCommon';
 import { checkCallConfiguration } from '@/app/preflight';
-jest.mock('@/app/preflight', () => ({ checkCallConfiguration: jest.fn() }));
+vi.mock('@/app/preflight', () => ({ checkCallConfiguration: vi.fn() }));
 
-jest.mock('@byteplus/rtc', () => ({
-  __esModule: true,
-  default: { isSupported: jest.fn().mockResolvedValue(true) },
+vi.mock('@byteplus/rtc', () => ({
+  default: { isSupported: vi.fn().mockResolvedValue(true) },
   StreamIndex: { STREAM_INDEX_SCREEN: 1 },
   NetworkQuality: { UNKNOWN: 0 },
 }));
-jest.mock('@arco-design/web-react', () => ({ Modal: { error: jest.fn() } }));
-jest.mock('@/utils/logger', () => ({ debug: jest.fn() }));
-jest.mock('@/lib/listenerHooks', () => () => ({}));
-jest.mock('@/lib/RtcClient', () => ({}));
-jest.mock('@/app/index', () => ({ GenerateRtcAccessToken: jest.fn() }));
+vi.mock('@arco-design/web-react', () => ({ Modal: { error: vi.fn() } }));
+vi.mock('@/utils/logger', () => ({ default: ({ debug: vi.fn() }) }));
+vi.mock('@/lib/listenerHooks', () => ({ default: () => ({}) }));
+vi.mock('@/lib/RtcClient', () => ({ default: ({}) }));
+vi.mock('@/app/index', () => ({ default: ({ GenerateRtcAccessToken: vi.fn() }) }));
 
 let root;
 let container;
@@ -46,7 +46,7 @@ beforeEach(() => {
   previousGenerateToken = openAPIs.GenerateRtcAccessToken;
   config.AppId = 'Your AppId';
   previousFetch = global.fetch;
-  global.fetch = jest.fn().mockResolvedValue({
+  global.fetch = vi.fn().mockResolvedValue({
     ok: true,
     json: async () => ({ Result: { appId: 'test-app' } }),
   });
@@ -76,7 +76,7 @@ afterEach(() => {
 });
 
 test('a failed configuration fetch reports the service and allows retry', async () => {
-  openAPIs.GenerateRtcAccessToken = jest.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+  openAPIs.GenerateRtcAccessToken = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
   await act(async () => container.querySelector('button').click());
   expect(Modal.error).toHaveBeenCalledWith(
     expect.objectContaining({
@@ -91,7 +91,7 @@ test('a failed configuration fetch reports the service and allows retry', async 
 
 test('repeated clicks share the pending join attempt', async () => {
   let reject;
-  openAPIs.GenerateRtcAccessToken = jest.fn().mockImplementation(
+  openAPIs.GenerateRtcAccessToken = vi.fn().mockImplementation(
     () =>
       new Promise((resolve, fail) => {
         reject = fail;
@@ -117,8 +117,8 @@ function LeaveHarness() {
 }
 
 test('audio capture failure still releases the RTC session', async () => {
-  RtcClient.stopAudioCapture = jest.fn().mockRejectedValue(new Error('Capture stopped'));
-  RtcClient.leaveRoom = jest.fn().mockResolvedValue(undefined);
+  RtcClient.stopAudioCapture = vi.fn().mockRejectedValue(new Error('Capture stopped'));
+  RtcClient.leaveRoom = vi.fn().mockResolvedValue(undefined);
   const store = configureStore({ reducer: () => ({}) });
   act(() =>
     root.render(
@@ -133,8 +133,8 @@ test('audio capture failure still releases the RTC session', async () => {
 
 test('exit waits for cleanup and coalesces repeated clicks', async () => {
   let finishLeave;
-  RtcClient.stopAudioCapture = jest.fn().mockResolvedValue(undefined);
-  RtcClient.leaveRoom = jest.fn(
+  RtcClient.stopAudioCapture = vi.fn().mockResolvedValue(undefined);
+  RtcClient.leaveRoom = vi.fn(
     () =>
       new Promise((resolve) => {
         finishLeave = resolve;
@@ -172,7 +172,7 @@ test('exit waits for cleanup and coalesces repeated clicks', async () => {
 });
 
 test('runtime AppId is loaded before token issuance', async () => {
-  openAPIs.GenerateRtcAccessToken = jest.fn().mockRejectedValue(new Error('token unavailable'));
+  openAPIs.GenerateRtcAccessToken = vi.fn().mockRejectedValue(new Error('token unavailable'));
   await act(async () => container.querySelector('button').click());
   expect(global.fetch).toHaveBeenCalledWith(expect.stringMatching(/\/runtimeConfig$/));
   expect(openAPIs.GenerateRtcAccessToken).toHaveBeenCalledWith({
@@ -184,7 +184,7 @@ test('runtime AppId is loaded before token issuance', async () => {
 
 test('configured AppId takes precedence over runtime configuration', async () => {
   config.AppId = 'configured-app';
-  openAPIs.GenerateRtcAccessToken = jest.fn().mockRejectedValue(new Error('token unavailable'));
+  openAPIs.GenerateRtcAccessToken = vi.fn().mockRejectedValue(new Error('token unavailable'));
   await act(async () => container.querySelector('button').click());
   expect(global.fetch).not.toHaveBeenCalled();
   expect(openAPIs.GenerateRtcAccessToken).toHaveBeenCalledWith(
@@ -194,7 +194,7 @@ test('configured AppId takes precedence over runtime configuration', async () =>
 
 test('runtime configuration failure allows retry before token issuance', async () => {
   global.fetch.mockRejectedValue(new TypeError('Failed to fetch'));
-  openAPIs.GenerateRtcAccessToken = jest.fn();
+  openAPIs.GenerateRtcAccessToken = vi.fn();
   await act(async () => container.querySelector('button').click());
   expect(container.textContent).toBe('Call now');
   expect(openAPIs.GenerateRtcAccessToken).not.toHaveBeenCalled();
@@ -206,7 +206,7 @@ test.each([{}, { appId: 123 }, { appId: ' ' }])(
   'invalid runtime AppId is rejected: %p',
   async (result) => {
     global.fetch.mockResolvedValue({ ok: true, json: async () => ({ Result: result }) });
-    openAPIs.GenerateRtcAccessToken = jest.fn();
+    openAPIs.GenerateRtcAccessToken = vi.fn();
     await act(async () => container.querySelector('button').click());
     expect(openAPIs.GenerateRtcAccessToken).not.toHaveBeenCalled();
     expect(container.textContent).toBe('Call now');
@@ -219,8 +219,8 @@ test('configuration rejection occurs before token issuance or RTC creation', asy
     ready: false,
     issues: [{ stage: 'configuration', message: 'AKOOL_API_KEY is required' }],
   });
-  openAPIs.GenerateRtcAccessToken = jest.fn();
-  RtcClient.createEngine = jest.fn();
+  openAPIs.GenerateRtcAccessToken = vi.fn();
+  RtcClient.createEngine = vi.fn();
   await act(async () => container.querySelector('button').click());
   expect(openAPIs.GenerateRtcAccessToken).not.toHaveBeenCalled();
   expect(RtcClient.createEngine).not.toHaveBeenCalled();
