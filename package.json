@@ -5,7 +5,7 @@
   "license": "BSD-3-Clause",
   "scripts": {
     "setup": "npm ci && npm --prefix server ci && npm --prefix web ci",
-    "dev": "npm run dev:realtime",
+    "dev": "npm run dev:flexible",
     "dev:realtime": "node scripts/dev.cjs realtime",
     "dev:flexible": "node scripts/dev.cjs flexible",
     "dev:server": "node scripts/dev.cjs server",

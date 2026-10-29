@@ -5,6 +5,25 @@ speech recognition, language models, and text-to-speech.
 
 [Online demo](https://demo.byteplus.com/rtc/solution/aigc)
 
+## RTC CLI integration
+
+The companion server supports authenticated CLI access to RTC tokens and
+VoiceChat Start/Stop. Run these commands in a generated project:
+
+```shell
+byteplus-rtc auth login --browser=open
+byteplus-rtc agent resources --write
+byteplus-rtc dev
+```
+
+The CLI supplies the server executable path and project directory. Select the
+RTC application and model and speech resources through the CLI. Credentials
+are exchanged inside the CLI process. RTC tokens use `GetToken` Version
+`2025-06-01`; an RTC AppKey is optional.
+
+With `BYTEPLUS_ACCESS_KEY_ID` and `BYTEPLUS_SECRET_ACCESS_KEY` configured,
+the server signs OpenAPI requests using those credentials.
+
 ## Setup and configuration
 
 Use Node.js 22 (>=22.13) and npm 10. Run from the repository root:
@@ -15,8 +34,9 @@ npm run setup
 cp .env.example .env.local
 ```
 
-Set `RTC_APP_ID`, `RTC_APP_KEY`, `BYTEPLUS_ACCESS_KEY_ID`, and
-`BYTEPLUS_SECRET_ACCESS_KEY` in `.env.local`.
+Set `RTC_APP_ID` in `.env.local`. For standalone OpenAPI access, also set
+`BYTEPLUS_ACCESS_KEY_ID` and `BYTEPLUS_SECRET_ACCESS_KEY`. CLI-generated projects
+use the authenticated CLI session when access keys are absent.
 
 - Flexible mode: configure credentials for the ASR, LLM, and TTS providers selected in the UI.
 - Realtime mode: set `OPENAI_API_KEY`.
@@ -39,8 +59,8 @@ session limit (default: 1800 seconds).
 npm run dev
 ```
 
-This starts the API and web app in Realtime mode. Use `npm run dev:flexible`
-for Flexible mode, then open the web URL printed at startup.
+This starts the API and web app in Flexible mode. Use `npm run dev:realtime`
+for Realtime mode, then open the web URL printed at startup.
 
 The web app selects an available port starting at 3000. Set `PORT` to require
 a specific port; `SERVER_PORT` defaults to 3001. Startup reports missing

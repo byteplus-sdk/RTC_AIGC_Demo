@@ -3,6 +3,8 @@
  * SPDX-license-identifier: BSD-3-Clause
  */
 
+const path = require('path');
+const { spawn } = require('child_process');
 const Koa = require('koa');
 const bodyParser = require('koa-bodyparser');
 const cors = require('koa2-cors');
@@ -13,10 +15,12 @@ const { createAgentLifecycle } = require('./agentLifecycle');
 const { preflight } = require('./preflight');
 const { loadConfig, required } = require('./config');
 if (require.main === module) {
-  require('dotenv').config({ path: process.env.DEMO_ENV_FILE || require('path').resolve(__dirname, '../.env.local') });
+  require('dotenv').config({ path: process.env.BYTEPLUS_RTC_ENV_FILE || process.env.DEMO_ENV_FILE || path.resolve(__dirname, '../.env.local') });
 }
 const { injectSensitiveInfo } = require('./sensitive');
-const { isVoiceChatMode, generateRtcAccessToken } = require('./util');
+const { isVoiceChatMode } = require('./util');
+
+const START_ACTION = 'StartVoiceChat';
 
 const AGENT_ACTIONS = new Set([
   'StartVoiceChat', 'StopVoiceChat',
@@ -63,38 +67,180 @@ function validateProviderConfig(action, body, env) {
   for (const field of new Set(fields)) required(env[field], field);
 }
 
-function createApp({ fetchImpl = fetch, env = process.env, probeSpeech } = {}) {
-  const config = loadConfig(env);
+function injectEnvironmentSecrets(body, env = process.env) {
+  injectSensitiveInfo(body, true);
+  const asr = body?.Config?.ASRConfig;
+  if (asr?.Provider === 'BytePlus') {
+    asr.ProviderParams = {
+      ...asr.ProviderParams,
+      AppId: required(env.BYTEPLUS_SEED_SPEECH_APP_ID, 'BYTEPLUS_SEED_SPEECH_APP_ID'),
+      AccessToken: required(env.BYTEPLUS_SEED_SPEECH_ACCESS_TOKEN, 'BYTEPLUS_SEED_SPEECH_ACCESS_TOKEN'),
+    };
+  }
+  const llm = body?.Config?.LLMConfig;
+  if (llm?.Mode === 'BytePlusArk') {
+    llm.EndPointId = required(env.BYTEPLUS_MODEL_ENDPOINT_ID, 'BYTEPLUS_MODEL_ENDPOINT_ID');
+    llm.APIKey = required(env.BYTEPLUS_MODEL_API_KEY, 'BYTEPLUS_MODEL_API_KEY');
+  }
+  const tts = body?.Config?.TTSConfig;
+  if (tts?.Provider === 'byteplus_Bidirectional_streaming') {
+    tts.ProviderParams = tts.ProviderParams || {};
+    tts.ProviderParams.app = {
+      ...(tts.ProviderParams.app || {}),
+      appid: required(env.BYTEPLUS_SEED_SPEECH_APP_ID, 'BYTEPLUS_SEED_SPEECH_APP_ID'),
+      token: required(env.BYTEPLUS_SEED_SPEECH_ACCESS_TOKEN, 'BYTEPLUS_SEED_SPEECH_ACCESS_TOKEN'),
+    };
+  }
+  return body;
+}
+
+function invokeOpenAPI(config, action, version, body, fetchImpl = fetch, signal) {
+  const endpoint = new URL(config.endpoint);
+  const requestData = {
+    region: config.region,
+    method: 'POST',
+    params: { Action: action, Version: version },
+    headers: { Host: endpoint.host, 'Content-Type': 'application/json' },
+    body,
+  };
+  if (config.userAgent) requestData.headers['User-Agent'] = config.userAgent;
+  const signer = new Signer(requestData, config.service);
+  const url = `${config.endpoint}?${signer.getSignUrl(config.credential)}`;
+  return fetchImpl(url, {
+    method: 'POST',
+    headers: requestData.headers,
+    body: JSON.stringify(body),
+    timeout: 5000,
+    signal,
+  }).then((response) => {
+    if (response.ok === false) throw new Error(`RTC OpenAPI returned HTTP ${response.status}`);
+    return response.json();
+  });
+}
+
+function runCLI(config, args, input, spawnImpl = spawn, signal) {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(new Error('Agent request aborted'));
+    const child = spawnImpl(config.cliPath, ['--format=json', ...args], {
+      cwd: config.projectDir,
+      env: config.env,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+    const abort = () => child.kill('SIGKILL');
+    signal?.addEventListener('abort', abort, { once: true });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.on('data', (chunk) => {
+      if (stdout.length < 1024 * 1024) stdout += chunk.toString();
+    });
+    child.stderr.on('data', (chunk) => {
+      if (stderr.length < 1024 * 1024) stderr += chunk.toString();
+    });
+    const timer = setTimeout(() => child.kill('SIGKILL'), 30000);
+    child.once('error', (error) => {
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', abort);
+      reject(error);
+    });
+    child.once('close', (code) => {
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', abort);
+      if (code !== 0) {
+        const envelope = parseCLIError(stdout) || parseCLIError(stderr);
+        const typed = envelope?.error;
+        const detail = typed?.message
+          ? `${typed.code ? `${typed.code}: ` : ''}${typed.message}${typeof typed.hint === 'string' ? `. ${typed.hint}` : ''}`
+          : `byteplus-rtc ${args.slice(0, 2).join(' ')} failed`;
+        reject(new Error(detail));
+        return;
+      }
+      try {
+        const result = JSON.parse(stdout);
+        if (!result?.ok) throw new Error('CLI returned an unsuccessful result');
+        resolve(result.data);
+      } catch (error) {
+        reject(new Error(`invalid byteplus-rtc JSON output: ${error.message}`));
+      }
+    });
+    child.stdin.on('error', () => undefined);
+    child.stdin.end(input === undefined ? undefined : JSON.stringify(input));
+  });
+}
+
+function parseCLIError(text) {
+  for (let index = text.lastIndexOf('{'); index >= 0; index = text.lastIndexOf('{', index - 1)) {
+    try {
+      const value = JSON.parse(text.slice(index).trim());
+      if (value && value.ok === false && value.error && typeof value.error === 'object') return value;
+    } catch (_) {
+      // Progress belongs on stderr and may precede the final JSON envelope.
+    }
+  }
+  return undefined;
+}
+
+async function invokeAgent(config, action, body, options = {}) {
+  if (!AGENT_ACTIONS.has(action)) throw new Error(`unsupported agent action ${action}`);
+  if (config.mode === 'openapi') {
+    return invokeOpenAPI(config, action, '2025-05-01', body, options.fetchImpl, options.signal);
+  }
+  if (!isVoiceChatMode(action)) {
+    throw Object.assign(new Error(`unsupported CLI action ${action}`), { status: 400 });
+  }
+  const command = action === START_ACTION ? 'start' : 'stop';
+  const data = await runCLI(config, ['agent', command, '--runtime-request-stdin'], body, options.spawnImpl, options.signal);
+  return {
+    ResponseMetadata: { Action: action, RequestId: `byteplus-rtc-cli-${Date.now()}` },
+    Result: data?.status === 'running' || data?.status === 'stopped' ? 'ok' : data,
+  };
+}
+
+async function issueToken(config, { appID, roomID, userID }, options = {}) {
+  if (![appID, roomID, userID].every((value) => typeof value === 'string' && value.trim())) throw Object.assign(new Error('appID, roomID and userID are required'), { status: 400 });
+  if (appID !== config.appId) throw Object.assign(new Error('appID does not match RTC_APP_ID'), { status: 400 });
+  if (config.mode === 'openapi') {
+    const response = await invokeOpenAPI(
+      config,
+      'GetToken',
+      '2025-06-01',
+      { AppId: appID, RoomId: roomID, UserId: userID },
+      options.fetchImpl,
+      options.signal
+    );
+    return response?.Result?.Token;
+  }
+  const data = await runCLI(
+    config,
+    ['token', 'issue', '--room-id', roomID, '--user-id', userID],
+    undefined,
+    options.spawnImpl,
+    options.signal
+  );
+  return data?.token;
+}
+
+function prepareAgentBody(config, action, body) {
+  // In CLI mode, raw provider credentials are fetched and injected only
+  // inside the short-lived byteplus-rtc process. The Node server receives
+  // selectors but never receives the exchanged secrets.
+  if (config.mode === 'openapi') {
+    if (isVoiceChatMode(action)) {
+      injectEnvironmentSecrets(body, config.env);
+    } else {
+      injectSensitiveInfo(body, false);
+    }
+  }
+  return body;
+}
+
+function createApp(options = {}) {
+  const { fetchImpl = fetch, env = process.env, probeSpeech } = options;
+  const config = options.config || loadConfig(env);
   const app = new Koa();
   const controller = new AbortController();
-  const lifecycle = createAgentLifecycle(async (action, body) => {
-    /** Refer to https://www.npmjs.com/package/@byteplus/vcloud-sdk-nodejs to get more information. */
-    const openApiRequestDataRTC = {
-      region: 'ap-southeast-1',
-      method: 'POST',
-      params: {
-        Action: action,
-        Version: '2025-05-01',
-      },
-      headers: {
-        Host: 'rtc.ap-southeast-1.byteplusapi.com',
-        'Content-Type': 'application/json',
-      },
-    };
-    const rtcSigner = new Signer(openApiRequestDataRTC, 'rtc');
-    const rtcSignedUri = `https://rtc.ap-southeast-1.byteplusapi.com?${rtcSigner.getSignUrl(config.credential)}`;
-
-    /** Refer to https://docs.byteplus.com/en/docs/byteplus-rtc/docs-69828 to get more information. */
-    const result = await fetchImpl(rtcSignedUri, {
-      method: 'POST',
-      headers: openApiRequestDataRTC.headers,
-      body: JSON.stringify(body),
-      timeout: 5000,
-      signal: controller.signal,
-    });
-    if (result.ok === false) throw new Error(`RTC OpenAPI returned HTTP ${result.status}`);
-    return result.json();
-  });
+  const lifecycle = createAgentLifecycle((action, body) =>
+    invokeAgent(config, action, body, { ...options, fetchImpl, signal: controller.signal })
+  );
   app.stopActiveAgents = lifecycle.stop;
   app.abortAgentRequests = () => controller.abort();
 
@@ -123,13 +269,25 @@ function createApp({ fetchImpl = fetch, env = process.env, probeSpeech } = {}) {
 
   app.use(async (ctx) => {
     if (ctx.method === 'GET' && ctx.path === '/health') {
-      ctx.body = { ok: true };
+      ctx.body = { ok: true, agentMode: config.mode };
       return;
     }
     if (ctx.method === 'POST' && ctx.path === '/preflight') {
       const action = ctx.request.query.action;
       if (!AGENT_ACTIONS.has(action) || !action.startsWith('Start')) ctx.throw(400, 'unsupported preflight action');
-      ctx.body = await preflight(action, ctx.request.body, env, { validate: validateProviderConfig, probe: probeSpeech });
+      if (config.mode === 'cli') {
+        if (!isVoiceChatMode(action)) {
+          ctx.body = { ready: false, issues: [{ stage: 'configuration', message: 'CLI mode supports Flexible VoiceChat. Configure direct OpenAPI credentials for Realtime mode.' }] };
+          return;
+        }
+        try {
+          ctx.body = await runCLI(config, ['agent', 'check', '--runtime-request-stdin'], ctx.request.body, options.spawnImpl, controller.signal);
+        } catch (error) {
+          ctx.body = { ready: false, issues: [{ stage: 'configuration', message: error.message }] };
+        }
+      } else {
+        ctx.body = await preflight(action, ctx.request.body, config.env, { validate: validateProviderConfig, probe: probeSpeech });
+      }
       return;
     }
     if (ctx.method === 'GET' && ctx.path === '/runtimeConfig') {
@@ -145,7 +303,7 @@ function createApp({ fetchImpl = fetch, env = process.env, probeSpeech } = {}) {
       const action = ctx.request.query.action;
 
       if (!AGENT_ACTIONS.has(action)) ctx.throw(400, `unsupported action ${action}`);
-      validateProviderConfig(action, body, env);
+      if (config.mode === 'openapi') validateProviderConfig(action, body, config.env);
 
       /**
        * @brief If OpenAPI invoked in the client like website, advised to generate session token for security.
@@ -154,7 +312,7 @@ function createApp({ fetchImpl = fetch, env = process.env, probeSpeech } = {}) {
       // await getSessionToken();
 
       /** Injecting the sensitive info to request body */
-      injectSensitiveInfo(body, isVoiceChatMode(action));
+      prepareAgentBody(config, action, body);
 
       ctx.body = await lifecycle.request(action, body);
       return;
@@ -173,7 +331,8 @@ function createApp({ fetchImpl = fetch, env = process.env, probeSpeech } = {}) {
         ctx.throw(400, 'appID, roomID and userID are required');
       }
       if (appID !== config.appId) ctx.throw(400, 'appID does not match RTC_APP_ID');
-      const accessToken = generateRtcAccessToken({ appID, appKey: config.appKey, roomID, userID });
+      const accessToken = await issueToken(config, { appID, roomID, userID }, { ...options, fetchImpl, signal: controller.signal });
+      if (!accessToken) throw new Error('GetToken returned no token');
       ctx.body = {
         ResponseMetadata,
         Result: {
@@ -191,7 +350,8 @@ function createApp({ fetchImpl = fetch, env = process.env, probeSpeech } = {}) {
 }
 
 function startServer(options = {}) {
-  const { port, host } = loadConfig(options.env);
+  const config = options.config || loadConfig(options.env);
+  const { port, host } = config;
   const app = createApp(options);
   const server = app.listen(port, host, () => {
     const url = `http://${host.includes(':') ? `[${host}]` : host}:${port}`;
@@ -234,4 +394,7 @@ if (require.main === module) {
   startServer();
 }
 
-module.exports = { createApp, loadConfig, startServer, validateProviderConfig };
+module.exports = {
+  createApp, loadConfig, loadRuntimeConfig: loadConfig, startServer, validateProviderConfig,
+  injectEnvironmentSecrets, invokeAgent, invokeOpenAPI, issueToken, prepareAgentBody, runCLI,
+};

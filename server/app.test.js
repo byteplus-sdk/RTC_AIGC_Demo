@@ -7,6 +7,7 @@ const { VOICE_CHAT_MODE, REALTIME_API_MODE } = require('./sensitive');
 const env = {
   RTC_APP_ID: 'test-app', RTC_APP_KEY: 'test-app-key',
   BYTEPLUS_ACCESS_KEY_ID: 'test-ak', BYTEPLUS_SECRET_ACCESS_KEY: 'test-sk',
+  CUSTOM_LLM_API_KEY: 'test-custom-key',
   OPENAI_API_KEY: 'test-openai-key',
 };
 
@@ -32,7 +33,7 @@ test('health reports availability without contacting upstream services', async (
   const base = await serve(t, { fetchImpl: () => assert.fail('unexpected upstream call') });
   const res = await fetch(`${base}/health`);
   assert.equal(res.status, 200);
-  assert.deepEqual(await res.json(), { ok: true });
+  assert.deepEqual(await res.json(), { ok: true, agentMode: 'openapi' });
 });
 
 for (const action of [
@@ -66,8 +67,10 @@ for (const action of [
   });
 }
 
-test('token generation returns a locally signed token', async (t) => {
-  const base = await serve(t);
+test('token generation returns the OpenAPI token', async (t) => {
+  const base = await serve(t, {
+    fetchImpl: async () => ({ json: async () => ({ Result: { Token: 'test-token' } }) }),
+  });
   const res = await post(`${base}/generateRtcAccessToken?action=GenerateRtcAccessToken`, {
     appID: 'test-app', roomID: 'test-room', userID: 'test-user',
   });
@@ -121,12 +124,13 @@ test('unknown routes and route suffixes return 404', async (t) => {
 });
 
 test('startup validates common credentials and port', () => {
-  for (const field of ['RTC_APP_ID', 'RTC_APP_KEY', 'BYTEPLUS_ACCESS_KEY_ID', 'BYTEPLUS_SECRET_ACCESS_KEY']) {
+  for (const field of ['RTC_APP_ID', 'BYTEPLUS_ACCESS_KEY_ID', 'BYTEPLUS_SECRET_ACCESS_KEY']) {
     assert.throws(() => loadConfig({ ...env, [field]: '' }), new RegExp(field));
   }
   for (const port of ['0', '-1', '1.5', '65536', 'invalid']) {
     assert.throws(() => loadConfig({ ...env, SERVER_PORT: port }), /SERVER_PORT/);
   }
+  assert.doesNotThrow(() => loadConfig({ ...env, RTC_APP_KEY: '' }));
   assert.equal(loadConfig(env).port, 3001);
   assert.equal(loadConfig({ ...env, SERVER_PORT: '3101' }).port, 3101);
 });

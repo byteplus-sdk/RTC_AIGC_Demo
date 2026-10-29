@@ -1,0 +1,19 @@
+version: 2
+scene: voice-agent
+platform: web
+sdk:
+  name: "@byteplus/rtc"
+  version: "4.69.3"
+runtime:
+  topology: web-server
+  agent_control: server
+  ports:
+    web: 3000
+    server: 3001
+tasks:
+  post_create:
+    - "cp -n .env.example .env.local || true"
+  install:
+    - "npm run setup"
+  dev:
+    - "npm run dev:flexible"

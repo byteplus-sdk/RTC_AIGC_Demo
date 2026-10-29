@@ -16,7 +16,7 @@ const env = {
 test('startup reports all missing Realtime settings without disclosing values', () => {
   const issues = startupIssues({ BYTEPLUS_ACCESS_KEY_ID: 'private-value', PORT: '-1' }, 'all', 'realtime');
   const text = issues.join('\n');
-  for (const field of ['RTC_APP_ID', 'RTC_APP_KEY', 'BYTEPLUS_SECRET_ACCESS_KEY', 'OPENAI_API_KEY', 'PORT']) assert.match(text, new RegExp(field));
+  for (const field of ['RTC_APP_ID', 'BYTEPLUS_SECRET_ACCESS_KEY', 'OPENAI_API_KEY', 'PORT']) assert.match(text, new RegExp(field));
   assert.equal(text.includes('private-value'), false);
   assert.equal(startupIssues({ ...env, OPENAI_API_KEY: 'private' }, 'all', 'realtime').length, 0);
 });
@@ -27,7 +27,21 @@ test('Flexible defers selected provider credentials to the existing preflight', 
 
 test('server-only startup checks common credentials independently of conversation mode', () => {
   assert.deepEqual(startupIssues(env, 'server', 'realtime'), []);
-  assert.match(startupIssues({ ...env, RTC_APP_KEY: '' }, 'server', 'realtime').join('\n'), /RTC_APP_KEY/);
+  assert.deepEqual(startupIssues({ ...env, RTC_APP_KEY: '' }, 'server', 'realtime'), []);
+});
+
+test('CLI startup accepts Signin configuration and validates partial access keys', () => {
+  const cliEnv = {
+    RTC_APP_ID: 'test-app',
+    BYTEPLUS_RTC_CLI_PATH: '/tmp/byteplus-rtc',
+    BYTEPLUS_RTC_PROJECT_DIR: '/tmp/project',
+  };
+  assert.deepEqual(startupIssues(cliEnv, 'all', 'flexible'), []);
+  assert.deepEqual(startupIssues(cliEnv, 'server', 'realtime'), []);
+  assert.match(startupIssues({ ...cliEnv, BYTEPLUS_ACCESS_KEY_ID: 'test-ak' }, 'all', 'flexible').join('\n'), /must be set together/);
+  for (const key of ['BYTEPLUS_RTC_CLI_PATH', 'BYTEPLUS_RTC_PROJECT_DIR']) {
+    assert.match(startupIssues({ ...cliEnv, [key]: '' }, 'all', 'flexible').join('\n'), new RegExp(key));
+  }
 });
 
 test('web-only startup accepts an independently configured server', () => {

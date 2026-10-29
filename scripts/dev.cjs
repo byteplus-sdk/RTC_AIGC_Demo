@@ -148,13 +148,15 @@ async function main(args = process.argv.slice(2)) {
   if (!['realtime', 'flexible'].includes(mode) || args.length > (target === 'all' ? 1 : 2)) {
     throw new Error('Usage: node scripts/dev.cjs [flexible|realtime|web [flexible|realtime]|server]');
   }
-  const envFile = path.resolve(process.env.DEMO_ENV_FILE || path.join(root, '.env.local'));
+  const envFile = path.resolve(process.env.BYTEPLUS_RTC_ENV_FILE || process.env.DEMO_ENV_FILE || path.join(root, '.env.local'));
   let dotenv;
   try { dotenv = serverRequire('dotenv'); }
   catch { throw new Error('Dependencies are missing. Run npm run setup in the repository root.'); }
   const loaded = dotenv.config({ path: envFile });
   if (loaded.error && loaded.error.code !== 'ENOENT') throw new Error(`Cannot read configuration file: ${envFile}`);
   const env = { ...process.env, DEMO_ENV_FILE: envFile };
+  if (env.CONVO_CLI_WEB_PORT) env.PORT = env.CONVO_CLI_WEB_PORT;
+  if (env.CONVO_CLI_SERVER_PORT) env.SERVER_PORT = env.CONVO_CLI_SERVER_PORT;
   const issues = startupIssues(env, target, mode);
   if (issues.length) {
     throw new Error(`Configuration: ${envFile}\n${issues.map(issue => `  - ${issue}`).join('\n')}\nUse .env.example for field definitions.`);
