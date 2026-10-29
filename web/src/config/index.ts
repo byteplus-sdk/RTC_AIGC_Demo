@@ -19,8 +19,8 @@ import AmazonSVG from '@/assets/img/Amazon.svg';
 import ArkSVG from '@/assets/img/Ark.svg';
 
 export const getEnvDomain = () =>
-  process.env.REACT_APP_AIGC_PROXY_HOST ??
-  (process.env.NODE_ENV === 'development' ? '' : 'http://localhost:3001');
+  import.meta.env.REACT_APP_AIGC_PROXY_HOST ??
+  (import.meta.env.DEV ? '' : 'http://localhost:3001');
 
 export const AIGC_PROXY_HOST = getEnvDomain();
 
@@ -126,8 +126,8 @@ export const Questions = [
 ];
 
 const factory = new ConfigFactory();
-if (process.env.REACT_APP_RTC_APP_ID) factory.AppId = process.env.REACT_APP_RTC_APP_ID;
-if (process.env.REACT_APP_MODEL_ENDPOINT_ID)
-  factory.endPointId = process.env.REACT_APP_MODEL_ENDPOINT_ID;
+if (import.meta.env.REACT_APP_RTC_APP_ID) factory.AppId = import.meta.env.REACT_APP_RTC_APP_ID;
+if (import.meta.env.REACT_APP_MODEL_ENDPOINT_ID)
+  factory.endPointId = import.meta.env.REACT_APP_MODEL_ENDPOINT_ID;
 
 export default factory;

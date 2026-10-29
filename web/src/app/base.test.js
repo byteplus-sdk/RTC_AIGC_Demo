@@ -1,8 +1,9 @@
+import { vi } from 'vitest';
 import { Message } from '@arco-design/web-react';
 import { resultHandler } from './base';
 
-jest.mock('@arco-design/web-react', () => ({ Message: { error: jest.fn() } }));
-jest.mock('@/config', () => ({ AIGC_PROXY_HOST: '' }));
+vi.mock('@arco-design/web-react', () => ({ Message: { error: vi.fn() } }));
+vi.mock('@/config', () => ({ AIGC_PROXY_HOST: '' }));
 
 beforeEach(() => Message.error.mockClear());
 

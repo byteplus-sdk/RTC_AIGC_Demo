@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import './index';
 import { ConfigFactory } from './config';
 import { Provider } from './basic';
@@ -5,13 +6,13 @@ import { ASRManager } from './voiceChat/asr';
 import { AvatarMap, RealtimeAvatarMap } from './voiceChat/avatar';
 import { SCENE, getSceneSettings } from './scene';
 
-jest.mock('@byteplus/rtc', () => ({
+vi.mock('@byteplus/rtc', () => ({
   StreamIndex: { STREAM_INDEX_SCREEN: 1, STREAM_INDEX_MAIN: 0 },
   NetworkQuality: { UNKNOWN: 0 },
 }));
 
-const originalMode = process.env.REACT_APP_MODE;
-afterEach(() => { process.env.REACT_APP_MODE = originalMode; });
+const originalMode = import.meta.env.REACT_APP_MODE;
+afterEach(() => { vi.stubEnv('REACT_APP_MODE', originalMode); });
 
 function keys(value, allowed, required = []) {
   expect(Object.keys(value).filter((key) => !allowed.includes(key))).toEqual([]);
@@ -88,7 +89,7 @@ function flexible(body) {
 }
 
 test.each(Object.values(SCENE))('scene %s follows the Flexible request contract', (scene) => {
-  process.env.REACT_APP_MODE = 'flexible';
+  vi.stubEnv('REACT_APP_MODE', 'flexible');
   const factory = new ConfigFactory();
   Object.assign(factory, getSceneSettings(scene));
   flexible(JSON.parse(JSON.stringify(factory.config)));
@@ -96,7 +97,7 @@ test.each(Object.values(SCENE))('scene %s follows the Flexible request contract'
 
 test.each([Provider.Byteplus, Provider.Amazon, Provider.GoogleAsrV1, Provider.GoogleAsrV2])(
   'ASR provider %s uses the documented wire name', (provider) => {
-    process.env.REACT_APP_MODE = 'flexible';
+    vi.stubEnv('REACT_APP_MODE', 'flexible');
     const factory = new ConfigFactory();
     factory['Provider.ASR'] = provider;
     flexible(JSON.parse(JSON.stringify(factory.config)));
@@ -105,7 +106,7 @@ test.each([Provider.Byteplus, Provider.Amazon, Provider.GoogleAsrV1, Provider.Go
 
 test.each([Provider.Byteplus, Provider.Amazon, Provider.OpenAI, Provider.Google])(
   'TTS provider %s uses the documented fields', (provider) => {
-    process.env.REACT_APP_MODE = 'flexible';
+    vi.stubEnv('REACT_APP_MODE', 'flexible');
     const factory = new ConfigFactory();
     factory['Provider.TTS'] = provider;
     flexible(JSON.parse(JSON.stringify(factory.config)));
@@ -114,7 +115,7 @@ test.each([Provider.Byteplus, Provider.Amazon, Provider.OpenAI, Provider.Google]
 
 test.each([Provider.Byteplus, Provider.OpenAI, Provider.Google, Provider.CustomLLM])(
   'LLM provider %s uses the documented discriminator', (provider) => {
-    process.env.REACT_APP_MODE = 'flexible';
+    vi.stubEnv('REACT_APP_MODE', 'flexible');
     const factory = new ConfigFactory();
     factory['Provider.LLM'] = provider;
     flexible(JSON.parse(JSON.stringify(factory.config)));
@@ -134,7 +135,7 @@ test.each(['1.0', '2.0'])('Seed ASR %s preserves the requested language', (versi
 });
 
 test.each([Provider.None, Provider.Akool])('Flexible avatar %s follows its supported provider contract', (provider) => {
-  process.env.REACT_APP_MODE = 'flexible';
+  vi.stubEnv('REACT_APP_MODE', 'flexible');
   const factory = new ConfigFactory();
   factory['Provider.Avatar'] = provider;
   flexible(JSON.parse(JSON.stringify(factory.config)));
@@ -143,12 +144,12 @@ test.each([Provider.None, Provider.Akool])('Flexible avatar %s follows its suppo
 test('avatar capabilities follow the selected API', () => {
   expect(Object.keys(AvatarMap).sort()).toEqual([Provider.None, Provider.Akool].sort());
   expect(Object.keys(RealtimeAvatarMap).sort()).toEqual([Provider.None, Provider.Byteplus].sort());
-  process.env.REACT_APP_MODE = 'flexible';
+  vi.stubEnv('REACT_APP_MODE', 'flexible');
   expect(() => { new ConfigFactory()['Provider.Avatar'] = Provider.Byteplus; }).toThrow('Akool');
 });
 
 test.each([Provider.None, Provider.Byteplus])('Realtime avatar %s uses the Realtime request shape', (provider) => {
-  process.env.REACT_APP_MODE = 'realtime';
+  vi.stubEnv('REACT_APP_MODE', 'realtime');
   const factory = new ConfigFactory();
   factory['Provider.Avatar'] = provider;
   const body = JSON.parse(JSON.stringify(factory.config));

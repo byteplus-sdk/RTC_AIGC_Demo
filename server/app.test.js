@@ -28,6 +28,13 @@ function post(url, body) {
   });
 }
 
+test('health reports availability without contacting upstream services', async (t) => {
+  const base = await serve(t, { fetchImpl: () => assert.fail('unexpected upstream call') });
+  const res = await fetch(`${base}/health`);
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { ok: true });
+});
+
 for (const action of [
   'StartVoiceChat',
   'StopVoiceChat',

@@ -11,8 +11,9 @@ const fetch = require('node-fetch');
 const { getLlmCredentialField, getLlmApiKey } = require('./providerConfig');
 const { createAgentLifecycle } = require('./agentLifecycle');
 const { preflight } = require('./preflight');
+const { loadConfig, required } = require('./config');
 if (require.main === module) {
-  require('dotenv').config({ path: require('path').resolve(__dirname, '../.env.local') });
+  require('dotenv').config({ path: process.env.DEMO_ENV_FILE || require('path').resolve(__dirname, '../.env.local') });
 }
 const { injectSensitiveInfo } = require('./sensitive');
 const { isVoiceChatMode, generateRtcAccessToken } = require('./util');
@@ -21,30 +22,6 @@ const AGENT_ACTIONS = new Set([
   'StartVoiceChat', 'StopVoiceChat',
   'StartVoiceChatWithRealtimeAPI', 'StopVoiceChatWithRealtimeAPI',
 ]);
-
-function required(value, name) {
-  if (typeof value !== 'string' || !value.trim()) throw new Error(`${name} is required`);
-  return value.trim();
-}
-
-function loadConfig(env = process.env) {
-  if (Boolean(env.BYTEPLUS_ACCESS_KEY_ID?.trim()) !== Boolean(env.BYTEPLUS_SECRET_ACCESS_KEY?.trim())) {
-    throw new Error('BYTEPLUS_ACCESS_KEY_ID and BYTEPLUS_SECRET_ACCESS_KEY must be set together');
-  }
-  const port = Number(env.SERVER_PORT || 3001);
-  if (!Number.isInteger(port) || port < 1 || port > 65535) {
-    throw new Error('SERVER_PORT must be an integer between 1 and 65535');
-  }
-  return {
-    appId: required(env.RTC_APP_ID, 'RTC_APP_ID'),
-    appKey: required(env.RTC_APP_KEY, 'RTC_APP_KEY'),
-    credential: {
-      accessKeyId: required(env.BYTEPLUS_ACCESS_KEY_ID, 'BYTEPLUS_ACCESS_KEY_ID'),
-      secretKey: required(env.BYTEPLUS_SECRET_ACCESS_KEY, 'BYTEPLUS_SECRET_ACCESS_KEY'),
-    },
-    port,
-  };
-}
 
 function validateProviderConfig(action, body, env) {
   if (!action.startsWith('Start')) return;
@@ -145,6 +122,10 @@ function createApp({ fetchImpl = fetch, env = process.env, probeSpeech } = {}) {
   app.use(bodyParser());
 
   app.use(async (ctx) => {
+    if (ctx.method === 'GET' && ctx.path === '/health') {
+      ctx.body = { ok: true };
+      return;
+    }
     if (ctx.method === 'POST' && ctx.path === '/preflight') {
       const action = ctx.request.query.action;
       if (!AGENT_ACTIONS.has(action) || !action.startsWith('Start')) ctx.throw(400, 'unsupported preflight action');
@@ -210,10 +191,12 @@ function createApp({ fetchImpl = fetch, env = process.env, probeSpeech } = {}) {
 }
 
 function startServer(options = {}) {
-  const { port } = loadConfig(options.env);
+  const { port, host } = loadConfig(options.env);
   const app = createApp(options);
-  const server = app.listen(port, () => {
-    console.log(`AIGC Server is running at http://localhost:${port}`);
+  const server = app.listen(port, host, () => {
+    const url = `http://${host.includes(':') ? `[${host}]` : host}:${port}`;
+    console.log(`API ready: ${url}`);
+    console.log(`Health: ${url}/health`);
   });
   let stopping;
   const onSignal = () => {

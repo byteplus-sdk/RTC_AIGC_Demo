@@ -8,7 +8,6 @@ import MainPage from './pages/MainPage';
 import '@arco-design/web-react/dist/css/arco.css';
 
 function App() {
-  console.warn('You can refer to the contents of the README to troubleshoot runtime issues.');
   return (
     <BrowserRouter>
       <Routes>

@@ -13,59 +13,42 @@
     "react-router": "^6.3.0",
     "react-router-dom": "^6.3.0",
     "redux": "^4.2.0",
-    "uuid": "^8.3.2"
+    "uuid": "^8.3.2",
+    "lodash": "^4.17.21"
   },
   "scripts": {
-    "dev": "npm run dev:realtime",
-    "dev:realtime": "npm run echo && cross-env REACT_APP_MODE=realtime craco start",
-    "dev:flexible": "npm run echo && cross-env REACT_APP_MODE=flexible craco start",
-    "build": "craco build",
-    "test": "craco test",
-    "eject": "react-scripts eject",
+    "dev": "vite",
+    "dev:realtime": "vite --mode realtime",
+    "dev:flexible": "vite --mode flexible",
+    "build": "vite build",
+    "test": "vitest run",
     "prettier": "prettier --write '**/*.{js,jsx,tsx,ts,less,md,json}'",
-    "eslint": "eslint  src/ --fix --cache --quiet --ext .js,.jsx,.ts,.tsx",
+    "eslint": "eslint src --fix --cache",
     "stylelint": "stylelint 'src/**/*.less' --fix",
     "pre-commit": "npm run eslint && npm run stylelint",
-    "echo": "node message.js",
-    "typecheck": "tsc --noEmit"
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
+    "typecheck": "tsc --noEmit",
+    "test:watch": "vitest"
   },
   "devDependencies": {
-    "@craco/craco": "^6.4.5",
     "@types/lodash": "^4.17.4",
-    "@types/node": "^16.11.45",
+    "@types/node": "^22.0.0",
     "@types/react": "^18.0.15",
     "@types/react-dom": "^18.0.6",
     "@types/uuid": "^8.3.4",
-    "craco-less": "^2.0.0",
-    "cross-env": "^7.0.3",
-    "eslint-config-airbnb": "^19.0.4",
-    "eslint-config-prettier": "^8.5.0",
-    "eslint-plugin-babel": "^5.3.1",
-    "eslint-plugin-prettier": "^4.2.1",
-    "postcss-less": "^6.0.0",
-    "prettier": "^2.7.1",
-    "react-scripts": "5.0.1",
-    "stylelint": "^14.9.1",
-    "stylelint-config-prettier": "^9.0.3",
-    "stylelint-config-standard": "^26.0.0",
-    "typescript": "^4.7.4"
+    "vite": "8.3.5",
+    "@vitejs/plugin-react": "6.1.2",
+    "vitest": "5.0.5",
+    "happy-dom": "21.0.4",
+    "less": "^4.2.0",
+    "typescript": "~5.9.3",
+    "eslint": "^10.13.0",
+    "@eslint/js": "^10.0.1",
+    "typescript-eslint": "^8.72.1",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^16.0.0",
+    "prettier": "^3.0.0",
+    "stylelint": "^17.16.0",
+    "stylelint-config-standard": "^40.0.0",
+    "postcss-less": "^6.0.0"
   }
 }

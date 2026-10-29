@@ -1,15 +1,12 @@
 {
-  "extends": ["stylelint-config-standard", "stylelint-config-prettier"],
+  "extends": [
+    "stylelint-config-standard"
+  ],
   "customSyntax": "postcss-less",
   "rules": {
     "no-descending-specificity": null,
     "no-duplicate-selectors": null,
     "font-family-no-missing-generic-family-keyword": null,
-    "block-opening-brace-space-before": "always",
-    "declaration-block-trailing-semicolon": null,
-    "declaration-colon-newline-after": null,
-    "indentation": null,
-    "selector-descendant-combinator-no-non-space": null,
     "selector-class-pattern": null,
     "keyframes-name-pattern": null,
     "no-invalid-position-at-import-rule": null,
@@ -18,7 +15,22 @@
     "selector-pseudo-class-no-unknown": [
       true,
       {
-        "ignorePseudoClasses": ["global"]
+        "ignorePseudoClasses": [
+          "global"
+        ]
+      }
+    ],
+    "at-rule-empty-line-before": null,
+    "import-notation": "string",
+    "color-function-alias-notation": null,
+    "media-feature-range-notation": null,
+    "declaration-property-value-no-unknown": null,
+    "declaration-block-no-duplicate-properties": [
+      true,
+      {
+        "ignore": [
+          "consecutive-duplicates-with-different-values"
+        ]
       }
     ]
   }

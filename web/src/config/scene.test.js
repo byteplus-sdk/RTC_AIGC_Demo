@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import config from '@/config';
 import { Provider } from './basic';
 import { SCENE, getSceneSettings } from './scene';
@@ -8,15 +9,15 @@ import { VoiceChatManager } from './voiceChat';
 import { BYTE_PLUS_TTS_2_VOICE_TYPE, BYTE_PLUS_VOICE_TYPE } from './voiceChat/tts';
 import reducer, { updateAIConfig } from '@/store/slices/room';
 
-jest.mock('@byteplus/rtc', () => ({
+vi.mock('@byteplus/rtc', () => ({
   StreamIndex: { STREAM_INDEX_SCREEN: 1, STREAM_INDEX_MAIN: 0 },
   NetworkQuality: { UNKNOWN: 0 },
 }));
 
-const originalMode = process.env.REACT_APP_MODE;
+const originalMode = import.meta.env.REACT_APP_MODE;
 let previous;
 beforeEach(() => {
-  process.env.REACT_APP_MODE = 'flexible';
+  vi.stubEnv('REACT_APP_MODE', 'flexible');
   previous = {
     ...getSettings(),
     LLMWebSearchEnabled: config.LLMWebSearchEnabled,
@@ -26,7 +27,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   Object.assign(config, previous);
-  process.env.REACT_APP_MODE = originalMode;
+  vi.stubEnv('REACT_APP_MODE', originalMode);
 });
 
 test('scene selection keeps the configured model endpoint', () => {
@@ -75,7 +76,7 @@ test('voice interruption maps to the VoiceChat request', () => {
 
 test('leaving the screen scene disables cached vision configuration', () => {
   Object.assign(config, getSceneSettings(SCENE.SCREEN_READER));
-  config.config;
+  expect(config.config.Config.LLMConfig.VisionConfig.Enable).toBe(true);
   Object.assign(config, getSceneSettings(SCENE.CUSTOM));
   expect(config.config.Config.LLMConfig.VisionConfig.Enable).toBe(false);
 });

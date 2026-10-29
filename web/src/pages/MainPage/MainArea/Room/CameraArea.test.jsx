@@ -1,22 +1,23 @@
+import { vi } from 'vitest';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
-import config from '@/config';
+import '@/config';
 import roomReducer, { localJoinRoom, updateLocalUser } from '@/store/slices/room';
 import RtcClient from '@/lib/RtcClient';
 import CameraArea from './CameraArea';
 
-jest.mock('@byteplus/rtc', () => ({
+vi.mock('@byteplus/rtc', () => ({
   StreamIndex: { STREAM_INDEX_MAIN: 0, STREAM_INDEX_SCREEN: 1 },
   VideoRenderMode: { RENDER_MODE_FILL: 1, RENDER_MODE_HIDDEN: 2 },
   NetworkQuality: { UNKNOWN: 0 },
 }));
-jest.mock('@/lib/RtcClient', () => ({
-  engine: { setLocalVideoPlayer: jest.fn() },
-  setRemoteVideoPlayer: jest.fn(),
-}));
-jest.mock('@/components/AIAvatarCard', () => () => null);
+vi.mock('@/lib/RtcClient', () => ({ default: ({
+  engine: { setLocalVideoPlayer: vi.fn() },
+  setRemoteVideoPlayer: vi.fn(),
+}) }));
+vi.mock('@/components/AIAvatarCard', () => ({ default: () => null }));
 
 test('preview binds camera and screen streams to the expanded local player', () => {
   global.IS_REACT_ACT_ENVIRONMENT = true;

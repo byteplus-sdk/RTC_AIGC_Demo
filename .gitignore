@@ -10,6 +10,7 @@ coverage/
 
 # production
 build/
+dist/
 
 # misc
 .DS_Store
@@ -25,6 +26,3 @@ yarn-error.log*
 
 /server/log
 /log
-
-yarn.lock
-package-lock.json

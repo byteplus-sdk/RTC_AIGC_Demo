@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
@@ -9,12 +10,12 @@ import { getConfigSnapshot } from '@/config/settings';
 import RtcClient from '@/lib/RtcClient';
 import Deepthinking from './index';
 
-jest.mock('@byteplus/rtc', () => ({
+vi.mock('@byteplus/rtc', () => ({
   StreamIndex: { STREAM_INDEX_MAIN: 0, STREAM_INDEX_SCREEN: 1 },
   NetworkQuality: { UNKNOWN: 0 },
 }));
-jest.mock('@/lib/RtcClient', () => ({ updateAgent: jest.fn() }));
-jest.mock('@arco-design/web-react', () => ({
+vi.mock('@/lib/RtcClient', () => ({ default: ({ updateAgent: vi.fn() }) }));
+vi.mock('@arco-design/web-react', () => ({
   Button: ({ children }) => <button>{children}</button>,
   Dropdown: ({ children, droplist }) => (
     <div>
@@ -30,7 +31,7 @@ jest.mock('@arco-design/web-react', () => ({
     ),
   }),
   Tooltip: ({ children }) => children,
-  Message: { error: jest.fn() },
+  Message: { error: vi.fn() },
   Modal: { confirm: ({ onOk }) => onOk() },
 }));
 

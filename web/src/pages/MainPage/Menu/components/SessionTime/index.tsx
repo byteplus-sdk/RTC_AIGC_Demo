@@ -3,7 +3,7 @@ import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import { useLeave } from '@/lib/useCommon';
 
-const configuredDuration = Number(process.env.REACT_APP_SESSION_DURATION_SECONDS || 1800);
+const configuredDuration = Number(import.meta.env.REACT_APP_SESSION_DURATION_SECONDS || 1800);
 export const SESSION_DURATION =
   Number.isFinite(configuredDuration) && configuredDuration > 0
     ? Math.floor(configuredDuration)

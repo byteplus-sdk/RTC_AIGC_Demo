@@ -19,7 +19,7 @@ export enum CALL_TYPE {
  */
 export const isRealTimeCallMode = () => {
   /** See package.json, demo defined REACT_APP_MODE. */
-  return process.env.REACT_APP_MODE === CALL_TYPE.REAL_TIME;
+  return (import.meta.env.REACT_APP_MODE || import.meta.env.MODE) === CALL_TYPE.REAL_TIME;
 };
 
 export type DeepPartial<T> = {
