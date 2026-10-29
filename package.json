@@ -8,11 +8,12 @@
     "dev": "npm run dev:realtime",
     "dev:realtime": "node scripts/dev.cjs realtime",
     "dev:flexible": "node scripts/dev.cjs flexible",
-    "dev:server": "npm --prefix server run dev",
+    "dev:server": "node scripts/dev.cjs server",
     "dev:web": "node scripts/dev.cjs web",
     "build": "npm --prefix web run build",
     "typecheck": "npm --prefix web run typecheck",
-    "test": "node --test scripts/*.test.cjs && npm --prefix server test && npm --prefix web test"
+    "test": "node --test scripts/*.test.cjs && npm --prefix server test && npm --prefix web test",
+    "dev:web:flexible": "node scripts/dev.cjs web flexible"
   },
   "engines": {
     "node": ">=22.13.0 <23",
