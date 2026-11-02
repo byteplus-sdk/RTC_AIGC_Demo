@@ -46,6 +46,7 @@ for (const mode of ['realtime', 'flexible']) {
       ...env, RTC_APP_KEY: 'private', BYTEPLUS_MODEL_ENDPOINT_ID: 'endpoint',
       OPENAI_API_KEY: 'private', AWS_SECRET_ACCESS_KEY: 'private', GOOGLE_CREDENTIALS_JSON: 'private',
       AVATAR_TOKEN: 'private', AKOOL_API_KEY: 'private', CUSTOM_LLM_API_KEY: 'private', ASKECHO_API_KEY: 'private',
+      ASR_GATEWAY_API_URL: 'private', ASR_GATEWAY_API_KEY: 'private', TTS_GATEWAY_API_URL: 'private', TTS_GATEWAY_API_KEY: 'private',
       SERVER_PORT: '3101',
     }, mode, 3100);
     assert.equal(result.REACT_APP_RTC_APP_ID, 'test-app');

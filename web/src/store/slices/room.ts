@@ -13,6 +13,7 @@ import {
 import { CALL_TYPE } from '@/app/base';
 import { getConfigSnapshot } from '@/config/settings';
 import config from '@/config';
+import { usesAiGateway } from '@/config/basic';
 import { SCENE } from '@/config/scene';
 
 export interface IUser {
@@ -259,7 +260,7 @@ export const roomSlice = createSlice({
        *  2. use paragraph to determine whether to append new content when SubtitleMode = 1 (which is the default value when avatar is enabled)
        * User's sentences use paragraph to determine whether to append new content
        */
-      const currentSubtitleMode = config.AvatarEnable ? 1 : 0;
+      const currentSubtitleMode = config.AvatarEnable || usesAiGateway(config);
       const lastMsgCompleted =
         !fromBot || currentSubtitleMode ? lastMsg.paragraph : lastMsg.definite;
 

@@ -51,7 +51,7 @@ function startupIssues(env, target, mode) {
 
 function webEnvironment(env, mode, port) {
   const result = Object.fromEntries(Object.entries(env).filter(([key]) =>
-    !/^(BYTEPLUS_|OPENAI_|AWS_|GOOGLE_|AVATAR_|AKOOL_|CUSTOM_LLM_)/.test(key) &&
+    !/^(BYTEPLUS_|OPENAI_|AWS_|GOOGLE_|AVATAR_|AKOOL_|CUSTOM_LLM_|ASR_GATEWAY_|TTS_GATEWAY_)/.test(key) &&
     !['ASKECHO_API_KEY', 'RTC_APP_KEY', 'RTC_APP_ID'].includes(key)
   ));
   return Object.assign(result, {

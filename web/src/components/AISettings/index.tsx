@@ -9,6 +9,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import isEqual from 'lodash/isEqual';
 import { IconSwap } from '@arco-design/web-react/icon';
 import { ArkVoiceDescription, ArkTts2VoiceDescription, VendorSVG } from '@/config';
+import { GatewayJsonError, type AiGatewaySettings, type SpeechModule } from '@/config/voiceChat/aiGateway';
+import AiGatewayFields from './AiGatewayFields';
 import { ASR_PROVIDER_OPTIONS, Provider } from '@/config/basic';
 import RtcClient from '@/lib/RtcClient';
 import {
@@ -29,7 +31,7 @@ import {
   getSceneSettings,
 } from '@/config/scene';
 import { SCENE_VOICES, getGoogleSceneVoices } from '@/config/sceneVoices';
-import { getSettings, getConfigSnapshot } from '@/config/settings';
+import { getSettings, getConfigSnapshot, getSettingsToApply } from '@/config/settings';
 import { ConfigFactory } from '@/config/config';
 import CheckBoxSelector from '../CheckBoxSelector';
 import TitleCard from '../TitleCard';
@@ -105,6 +107,7 @@ const formatVoiceTypeOptions = (
         Object.entries(options[provider] || {}).filter(
           ([, voice]) =>
             !scene ||
+            provider === Provider.AiGateway ||
             !LANGUAGE_SCENES.includes(scene) ||
             !SCENE_VOICES[scene]?.length ||
             SCENE_VOICES[scene].includes(voice) ||
@@ -184,7 +187,8 @@ function AISettings() {
   const [focusInput, setFocusInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
-  const [data, setData] = useState<Partial<ConfigFactory>>(getSettings());
+  const [data, setData] = useState(getSettings);
+  const [jsonError, setJsonError] = useState<GatewayJsonError>();
   const infos = (() => {
     const allVoices = {
       ...OPENAI_VOICE_TYPE,
@@ -205,11 +209,13 @@ function AISettings() {
         ].filter(Boolean)
       : [
           `VoiceType ${
-            Object.keys(allVoices).find(
-              (key) => allVoices[key as keyof typeof allVoices] === room.aiConfig.voice
-            ) ||
-            room.aiConfig.voice ||
-            'Custom'
+            room.aiConfig['Provider.TTS'] === Provider.AiGateway
+              ? `AI Gateway - ${room.aiConfig.aiGateway.TTS.Voice?.trim()}`
+              : Object.keys(allVoices).find(
+                  (key) => allVoices[key as keyof typeof allVoices] === room.aiConfig.voice
+                ) ||
+                room.aiConfig.voice ||
+                'Custom'
           }`,
           `Model ${room.aiConfig.Model || 'Custom'}`,
           `ASR ${
@@ -271,8 +277,8 @@ function AISettings() {
     const previous = getConfigSnapshot();
     const previousScene = room.scene;
     try {
-      if (!isEqual(data, getSettings())) {
-        const payload: Partial<ConfigFactory> = { ...data };
+      const payload: Partial<ConfigFactory> = getSettingsToApply(data, previous);
+      if (!isEqual(payload, getSettings())) {
         if (
           !isLlmProviderAllowedForWebSearch(
             payload['Provider.LLM'] || room.aiConfig['Provider.LLM']
@@ -288,6 +294,10 @@ function AISettings() {
       dispatch(updateScene(scene));
       setOpen(false);
     } catch (error) {
+      if (error instanceof GatewayJsonError) {
+        setJsonError(error);
+        return;
+      }
       dispatch(updateAIConfig(previous));
       dispatch(updateScene(previousScene));
       Message.error((error as Error).message || 'Unable to apply AI configuration.');
@@ -298,11 +308,17 @@ function AISettings() {
 
   useEffect(() => {
     if (open) {
+      setJsonError(undefined);
       setData(getSettings());
       setScene(room.scene);
       setSceneMode(LANGUAGE_SCENES.includes(room.scene) ? 1 : 0);
     }
   }, [open, room.scene]);
+
+  const changeGateway = (module: SpeechModule, settings: AiGatewaySettings) => {
+    setJsonError(undefined);
+    setData((prev) => ({ ...prev, aiGateway: { ...prev.aiGateway, [module]: settings } }));
+  };
 
   return (
     <>
@@ -397,6 +413,7 @@ function AISettings() {
                         [Provider.OpenAI]: OPENAI_VOICE_TYPE,
                         [Provider.Amazon]: AMAZON_VOICE_TYPE,
                         [Provider.Google]: getGoogleSceneVoices(scene),
+                        [Provider.AiGateway]: { 'AI Gateway': Provider.AiGateway },
                       },
                   scene
                 )}
@@ -409,6 +426,7 @@ function AISettings() {
                     : data['Provider.TTS']
                 }
                 onChange={(voice) => {
+                  if (voice === Provider.AiGateway) return;
                   propsChangedHandler('voice')(voice);
                   const isBpVoice =
                     Object.values(BYTE_PLUS_VOICE_TYPE).includes(voice as BYTE_PLUS_VOICE_TYPE) ||
@@ -435,10 +453,20 @@ function AISettings() {
                   }
                   propsChangedHandler('Provider.TTS')(v);
                 }}
-                value={data.voice}
+                value={
+                  data['Provider.TTS'] === Provider.AiGateway ? Provider.AiGateway : data.voice
+                }
                 placeHolder="Please select the voice you need"
               />
             </TitleCard>
+            {data['Provider.TTS'] === Provider.AiGateway && (
+              <AiGatewayFields
+                module="TTS"
+                settings={data.aiGateway.TTS}
+                error={jsonError}
+                onChange={(TTS) => changeGateway('TTS', TTS)}
+              />
+            )}
             {!isRealTimeCallMode() ? (
               <TitleCard title="LLM" size="mini">
                 <CheckBoxSelector
@@ -510,6 +538,14 @@ function AISettings() {
                 />
               </TitleCard>
             ) : null}
+            {data['Provider.ASR'] === Provider.AiGateway && (
+              <AiGatewayFields
+                module="ASR"
+                settings={data.aiGateway.ASR}
+                error={jsonError}
+                onChange={(ASR) => changeGateway('ASR', ASR)}
+              />
+            )}
             <TitleCard title="Avatar Role" size="mini">
               <CheckBoxSelector
                 label="Avatar Role"

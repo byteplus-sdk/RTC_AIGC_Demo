@@ -37,7 +37,9 @@ function Conversation(props: React.HTMLAttributes<HTMLDivElement>) {
     isShowSubtitle &&
     (isRealTimeCallMode() ||
       (!isRealTimeCallMode() &&
-        [Provider.Byteplus, Provider.OpenAI, Provider.Google].includes(Config['Provider.TTS'])));
+        [Provider.Byteplus, Provider.OpenAI, Provider.Google, Provider.AiGateway].includes(
+          Config['Provider.TTS']
+        )));
 
   useEffect(() => {
     const container = containerRef.current;

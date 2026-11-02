@@ -88,6 +88,8 @@ export class VoiceChatManager {
         AvatarConfig: this.avatar.value,
         SubtitleConfig: {
           SubtitleMode:
+            this.asr.provider === Provider.AiGateway ||
+            this.tts.provider === Provider.AiGateway ||
             this.avatar.value.Enabled ||
             (ttsConfig.ProviderParams as { ResourceId?: string }).ResourceId === 'seed-tts-2.0' ||
             this.tts.provider === Provider.OpenAI ||

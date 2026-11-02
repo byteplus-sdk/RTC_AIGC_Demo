@@ -21,6 +21,21 @@ Set `RTC_APP_ID`, `RTC_APP_KEY`, `BYTEPLUS_ACCESS_KEY_ID`, and
 - Flexible mode: configure credentials for the ASR, LLM, and TTS providers selected in the UI.
 - Realtime mode: set `OPENAI_API_KEY`.
 
+To offer **AI Gateway** in Flexible mode, set the WebSocket URL (`ws://` or
+`wss://`) and API key for each module you use in `.env.local`.
+
+| Module | Gateway URL | API key |
+| --- | --- | --- |
+| ASR | `ASR_GATEWAY_API_URL` | `ASR_GATEWAY_API_KEY` |
+| TTS | `TTS_GATEWAY_API_URL` | `TTS_GATEWAY_API_KEY` |
+
+If both modules share a gateway, use the same values for both pairs. In
+**Configure**, users select **AI Gateway** independently for ASR and TTS.
+TTS requires a voice ID and accepts optional pitch, speed, and volume settings.
+Enter extra data and headers as JSON in the format your gateway expects.
+The demo forwards the parsed values as supplied. The server checks the selected
+modules during preflight and adds their credentials to the RTC start request.
+
 [.env.example](.env.example) lists the provider and optional feature settings.
 Get credentials from the [RTC console](https://console.byteplus.com/rtc/listRTC),
 [IAM key management](https://console.byteplus.com/iam/keymanage), and

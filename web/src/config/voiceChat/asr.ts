@@ -4,6 +4,7 @@
  */
 
 import { Provider } from '../basic';
+import { buildAiGatewayParams, type AiGatewaySettings } from './aiGateway';
 import type { SeedVersion } from './seedVersion';
 
 /**
@@ -14,7 +15,14 @@ import type { SeedVersion } from './seedVersion';
 export class ASRManager {
   language = 'en-US';
 
-  provider: Provider.Amazon | Provider.Byteplus | Provider.GoogleAsrV1 | Provider.GoogleAsrV2;
+  provider:
+    | Provider.Amazon
+    | Provider.Byteplus
+    | Provider.GoogleAsrV1
+    | Provider.GoogleAsrV2
+    | Provider.AiGateway;
+
+  aiGateway: AiGatewaySettings = {};
 
   /** Seed ASR 1.0 vs 2.0 (default 2.0). */
   seedAsrVersion: SeedVersion = '2.0';
@@ -186,6 +194,11 @@ export class ASRManager {
     this.#paramsMap[Provider.GoogleAsrV2].ProviderParams.LanguageCodes = [this.language];
 
     switch (this.provider) {
+      case Provider.AiGateway:
+        return {
+          Provider: this.provider,
+          ProviderParams: buildAiGatewayParams(this.aiGateway, 'ASR'),
+        };
       case Provider.Byteplus: {
         const bp = this.#paramsMap[this.provider].ProviderParams;
         bp.Language = this.language === 'en-US' ? 'en-US' : 'zh-CN';

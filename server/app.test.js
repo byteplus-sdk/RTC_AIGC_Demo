@@ -66,6 +66,112 @@ for (const action of [
   });
 }
 
+const gatewayEnv = {
+  ...env,
+  ASR_GATEWAY_API_URL: 'wss://asr.example/ws', ASR_GATEWAY_API_KEY: 'asr-key',
+  TTS_GATEWAY_API_URL: 'ws://tts.example/ws', TTS_GATEWAY_API_KEY: 'tts-key',
+};
+
+const gateway = (ProviderParams) => ({ Provider: 'ai_gateway', ProviderParams });
+
+test('provider validation succeeds without returning credentials or changing the request', () => {
+  const body = { Config: { ASRConfig: gateway({}), TTSConfig: gateway({ Voice: 'test-voice' }) } };
+  const original = structuredClone(body);
+  assert.equal(validateProviderConfig('StartVoiceChat', body, gatewayEnv), undefined);
+  assert.deepEqual(body, original);
+});
+
+test('only StartVoiceChat binds each selected gateway to its deployed URL and key', async (t) => {
+  const ASRConfig = gateway({ ExtraHeader: { Authorization: 'session-value', 'x-model': 'asr' } });
+  const TTSConfig = gateway({ Voice: 'test-voice', OutputAudioVolume: 0, ExtraData: ['model', 2] });
+  const body = { Config: { LLMConfig: { Provider: 'OpenAI' }, ASRConfig, TTSConfig } };
+  let forwarded;
+  const base = await serve(t, {
+    env: gatewayEnv,
+    probeSpeech: () => assert.fail('unexpected speech probe'),
+    fetchImpl: async (url, options) => {
+      forwarded = JSON.parse(options.body);
+      return { json: async () => ({ Result: 'ok' }) };
+    },
+  });
+  const preflight = await post(`${base}/preflight?action=StartVoiceChat`, body);
+  assert.deepEqual(await preflight.json(), { ready: true, issues: [] });
+  assert.equal(forwarded, undefined);
+  const started = await post(`${base}/proxyAIGCFetch?action=StartVoiceChat`, body);
+  assert.equal(started.status, 200);
+  for (const kind of ['ASR', 'TTS']) {
+    const field = `${kind}Config`;
+    assert.deepEqual(forwarded.Config[field], gateway({
+      ...body.Config[field].ProviderParams,
+      URL: gatewayEnv[`${kind}_GATEWAY_API_URL`], APIKey: gatewayEnv[`${kind}_GATEWAY_API_KEY`],
+    }));
+  }
+  const stopped = await post(`${base}/proxyAIGCFetch?action=StopVoiceChat`, body);
+  assert.equal(stopped.status, 200);
+  assert.deepEqual(forwarded.Config.ASRConfig, ASRConfig);
+  assert.deepEqual(forwarded.Config.TTSConfig, TTSConfig);
+});
+
+for (const kind of ['ASR', 'TTS']) {
+  test(`${kind} requires only its own gateway pair and rejects partial configuration before forwarding`, async (t) => {
+    const config = {
+      LLMConfig: { Provider: 'OpenAI' },
+      ASRConfig: { Provider: 'Google' }, TTSConfig: { Provider: 'OpenAI' },
+      [`${kind}Config`]: gateway(kind === 'TTS' ? { Voice: 'test-voice' } : undefined),
+    };
+    const urlField = `${kind}_GATEWAY_API_URL`;
+    const keyField = `${kind}_GATEWAY_API_KEY`;
+    const selected = { ...env, GOOGLE_CREDENTIALS_JSON: '{}', [urlField]: gatewayEnv[urlField], [keyField]: gatewayEnv[keyField] };
+    const base = await serve(t, { env: selected, fetchImpl: () => assert.fail('unexpected upstream call') });
+    const body = { Config: config };
+    const ready = () => post(`${base}/preflight?action=StartVoiceChat`, body).then((res) => res.json());
+    assert.deepEqual(await ready(), { ready: true, issues: [] });
+    for (const [field, value] of [[keyField, ' '], [urlField, ''], [urlField, 'https://invalid.example'],
+      [urlField, 'wss:not-an-endpoint'], [urlField, 'wss://user:pass@invalid.example/ws'], [urlField, 'ws://invalid.example/#']]) {
+      selected[field] = value;
+      const result = await ready();
+      assert.equal(result.ready, false);
+      assert.match(result.issues[0].message, new RegExp(field));
+      assert.doesNotMatch(result.issues[0].message, /invalid\.example|user:pass/);
+      const start = await post(`${base}/proxyAIGCFetch?action=StartVoiceChat`, body);
+      assert.equal((await start.json()).Result, result.issues[0].message);
+      selected[field] = gatewayEnv[field];
+    }
+  });
+}
+
+test('forged gateway destinations and credentials are rejected by preflight and start', async (t) => {
+  const base = await serve(t, { env: gatewayEnv, fetchImpl: () => assert.fail('unexpected upstream call') });
+  const target = 'wss://untrusted.example/ws';
+  for (const kind of ['ASR', 'TTS']) {
+    const field = `${kind}Config`;
+    const config = { ASRConfig: gateway({}), TTSConfig: gateway({ Voice: 'test-voice' }), LLMConfig: { Provider: 'OpenAI' } };
+    for (const patch of [
+      { ProviderParams: { URL: target } }, { ProviderParams: { url: target } }, { ProviderParams: { APIKey: 'from-client' } },
+      { providerparams: { URL: target } },
+    ]) {
+      const body = { Config: { ...config, [field]: { ...config[field], ...patch } } };
+      const check = await post(`${base}/preflight?action=StartVoiceChat`, body);
+      const result = await check.json();
+      assert.equal(result.ready, false);
+      assert.match(result.issues[0].message, /session parameters|ambiguous/);
+      const start = await post(`${base}/proxyAIGCFetch?action=StartVoiceChat`, body);
+      assert.equal(start.status, 400);
+      assert.equal((await start.json()).Result, result.issues[0].message);
+    }
+  }
+});
+
+test('invalid AI Gateway session parameters fail the provider check', () => {
+  for (const [overrides, message] of [
+    [{ Voice: '' }, /voice/],
+    [{ OutputAudioSpeedRate: 'fast' }, /finite number/],
+  ]) {
+    const body = { Config: { TTSConfig: gateway({ Voice: 'test-voice', ...overrides }) } };
+    assert.throws(() => validateProviderConfig('StartVoiceChat', body, gatewayEnv), message);
+  }
+});
+
 test('token generation returns a locally signed token', async (t) => {
   const base = await serve(t);
   const res = await post(`${base}/generateRtcAccessToken?action=GenerateRtcAccessToken`, {

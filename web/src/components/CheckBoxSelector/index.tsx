@@ -3,9 +3,14 @@ import { Button, Popover, Radio } from '@arco-design/web-react';
 import CheckBox from '@/components/CheckBox';
 import utils from '@/utils/utils';
 import { BYTEPLUS_ASR_LABEL, BYTEPLUS_TTS_LABEL } from '@/config/voiceChat/seedVersion';
+import { Provider } from '@/config/basic';
 import styles from './index.module.less';
 
-const TAB_LABEL: Record<string, string> = { ...BYTEPLUS_ASR_LABEL, ...BYTEPLUS_TTS_LABEL };
+const TAB_LABEL: Record<string, string> = {
+  ...BYTEPLUS_ASR_LABEL,
+  ...BYTEPLUS_TTS_LABEL,
+  [Provider.AiGateway]: 'AI Gateway',
+};
 
 export interface ICheckBoxItemProps {
   icon?: string;

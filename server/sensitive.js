@@ -3,7 +3,7 @@
  * SPDX-license-identifier: BSD-3-Clause
  */
 const merge = require('lodash/merge');
-const { getLlmApiKey, getSpeechProviderKey } = require('./providerConfig');
+const { getLlmApiKey, getSpeechProviderKey, getGatewayCredentials } = require('./providerConfig');
 
 const AVATAR_PROVIDER = {
   VOLCANO: 'Volcano',
@@ -229,22 +229,18 @@ const REALTIME_API_MODE = {
  * @param body Request body.
  * @param isVoiceChatMode Whether voice chat mode.
  */
-const injectSensitiveInfo = (body, isVoiceChatMode) => {
+const injectSensitiveInfo = (body, isVoiceChatMode, { action, env = process.env } = {}) => {
   if (isVoiceChatMode) {
     /** Inject voice chat mode sensitive info */
-    if (body?.Config?.ASRConfig?.ProviderParams) {
-      body.Config.ASRConfig.ProviderParams = merge(
-        body.Config?.ASRConfig?.ProviderParams,
-        VOICE_CHAT_MODE.ASRConfig.ProviderParams[getSpeechProviderKey(body.Config?.ASRConfig?.Provider)]
-      );
-    }
-    if (body?.Config?.TTSConfig?.ProviderParams) {
-      body.Config.TTSConfig.ProviderParams = merge(
-        body.Config?.TTSConfig?.ProviderParams,
-        VOICE_CHAT_MODE.TTSConfig.ProviderParams[
-          getSpeechProviderKey(body.Config.TTSConfig.Provider)
-        ]
-      );
+    for (const kind of ['ASR', 'TTS']) {
+      const field = `${kind}Config`;
+      const speech = body?.Config?.[field];
+      if (speech?.Provider === 'ai_gateway' && action === 'StartVoiceChat') {
+        speech.ProviderParams = merge(speech.ProviderParams || {}, getGatewayCredentials(kind, env));
+      } else if (speech?.ProviderParams) {
+        const credentials = VOICE_CHAT_MODE[field].ProviderParams[getSpeechProviderKey(speech.Provider)];
+        speech.ProviderParams = merge(speech.ProviderParams, credentials);
+      }
     }
     if (body?.Config?.LLMConfig) {
       body.Config.LLMConfig.APIKey = getLlmApiKey(body.Config.LLMConfig, process.env) ||

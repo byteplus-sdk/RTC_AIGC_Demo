@@ -6,6 +6,9 @@ import { configureStore } from '@reduxjs/toolkit';
 import BytePlusRTC from '@byteplus/rtc';
 import { Modal } from '@arco-design/web-react';
 import config from '@/config';
+import { Provider as AiProvider } from '@/config/basic';
+import { getConfigSnapshot } from '@/config/settings';
+import roomReducer from '@/store/slices/room';
 import openAPIs from '@/app/index';
 import RtcClient from '@/lib/RtcClient';
 import { useJoin, useLeave } from './useCommon';
@@ -55,10 +58,7 @@ beforeEach(() => {
   container = document.createElement('div');
   root = createRoot(container);
   const store = configureStore({
-    reducer: () => ({
-      room: { isAIGCEnable: false },
-      device: { devicePermissions: { audio: false } },
-    }),
+    reducer: { room: roomReducer, device: () => ({ devicePermissions: { audio: false } }) },
   });
   act(() =>
     root.render(
@@ -227,4 +227,31 @@ test('configuration rejection occurs before token issuance or RTC creation', asy
   expect(Modal.error).toHaveBeenCalledWith(
     expect.objectContaining({ content: 'AKOOL_API_KEY is required' })
   );
+});
+
+test('calling again after Start fails uses the applied gateway voice', async () => {
+  const previous = getConfigSnapshot();
+  try {
+    config['Provider.TTS'] = AiProvider.AiGateway;
+    config.aiGateway = { ...config.aiGateway, TTS: { Voice: 'test-voice' } };
+    openAPIs.GenerateRtcAccessToken = vi.fn().mockResolvedValue({ token: 'test-token' });
+    RtcClient.createEngine = vi.fn();
+    RtcClient.addEventListeners = vi.fn();
+    RtcClient.joinRoom = vi.fn();
+    RtcClient.getDevices = vi.fn().mockResolvedValue({ audioInputs: [], videoInputs: [] });
+    RtcClient.leaveRoom = vi.fn().mockResolvedValue(undefined);
+    RtcClient.startAgent = vi.fn().mockRejectedValueOnce(new Error('Start failed'));
+    checkCallConfiguration.mockClear();
+
+    await act(async () => container.querySelector('button').click());
+    expect(RtcClient.leaveRoom).toHaveBeenCalledOnce();
+    await act(async () => container.querySelector('button').click());
+    expect(RtcClient.startAgent).toHaveBeenCalledTimes(2);
+    expect(checkCallConfiguration).toHaveBeenCalledTimes(2);
+    for (const [body] of checkCallConfiguration.mock.calls) {
+      expect(body.Config.TTSConfig).toMatchObject({ Provider: 'ai_gateway', ProviderParams: { Voice: 'test-voice' } });
+    }
+  } finally {
+    Object.assign(config, previous);
+  }
 });
