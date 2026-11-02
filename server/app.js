@@ -380,6 +380,7 @@ function startServer(options = {}) {
       clearTimeout(deadline);
       process.removeListener('SIGINT', onSignal);
       process.removeListener('SIGTERM', onSignal);
+      if (process.platform === 'win32') process.removeListener('SIGBREAK', onSignal);
       const failure = results.find((result) => result.status === 'rejected');
       if (failure) throw failure.reason;
     });
@@ -387,6 +388,7 @@ function startServer(options = {}) {
   };
   process.on('SIGINT', onSignal);
   process.on('SIGTERM', onSignal);
+  if (process.platform === 'win32') process.on('SIGBREAK', onSignal);
   return server;
 }
 

@@ -101,10 +101,11 @@ function prefixOutput(stream, label, output) {
   });
 }
 
-function startChildren(specs, { spawnImpl = spawn, proc = process } = {}) {
+function startChildren(specs, { spawnImpl = spawn, proc = process, shutdownTimeout = 20000 } = {}) {
   const children = [];
   const detached = proc.platform !== 'win32';
   let stopping = false;
+  let shutdownTimer;
   function stop(code = 0) {
     if (stopping) return;
     stopping = true;
@@ -113,13 +114,20 @@ function startChildren(specs, { spawnImpl = spawn, proc = process } = {}) {
       if (!child.pid) continue;
       try {
         if (detached) proc.kill(-child.pid, 'SIGTERM');
-        else {
-          const cleanup = spawnImpl('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' });
-          cleanup.on('error', error => { console.error(`[dev] ${error.message}`); proc.exitCode = 1; });
-        }
       } catch (error) {
         if (error.code !== 'ESRCH') { console.error(`[dev] ${error.message}`); proc.exitCode = 1; }
       }
+    }
+    if (!detached) {
+      shutdownTimer = setTimeout(() => {
+        for (const { child, closed } of children) {
+          if (!child.pid || closed) continue;
+          proc.exitCode ||= 1;
+          const cleanup = spawnImpl('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' });
+          cleanup.on('error', error => { console.error(`[dev] ${error.message}`); proc.exitCode = 1; });
+        }
+      }, shutdownTimeout);
+      shutdownTimer.unref();
     }
   }
   for (const spec of specs) {
@@ -127,18 +135,28 @@ function startChildren(specs, { spawnImpl = spawn, proc = process } = {}) {
       cwd: path.join(root, spec.name), env: spec.env,
       stdio: ['ignore', 'pipe', 'pipe'], detached,
     });
-    children.push({ child, name: spec.name });
+    const entry = { child, name: spec.name, closed: false };
+    children.push(entry);
+    child.once('close', () => {
+      entry.closed = true;
+      if (children.every(item => item.closed)) clearTimeout(shutdownTimer);
+    });
     prefixOutput(child.stdout, spec.name, proc.stdout);
     prefixOutput(child.stderr, spec.name, proc.stderr);
     child.once('error', error => { console.error(`[${spec.name}] ${error.message}`); stop(1); });
     child.once('exit', (code, signal) => {
-      if (stopping) return;
-      console.error(`[${spec.name}] Exited (${signal || code}). Restart with npm run dev:${spec.name}.`);
-      stop(code || 1);
+      const failed = () => {
+        if (stopping) return;
+        console.error(`[${spec.name}] Exited (${signal || code}). Restart with npm run dev:${spec.name}.`);
+        stop(code || 1);
+      };
+      if (detached) failed();
+      else setTimeout(failed, 50);
     });
   }
   proc.on('SIGINT', () => stop());
   proc.on('SIGTERM', () => stop());
+  if (!detached) proc.on('SIGBREAK', () => stop());
   return { children, stop };
 }
 
@@ -169,7 +187,10 @@ async function main(args = process.argv.slice(2)) {
       throw new Error(`SERVER_PORT ${config.port} is occupied. Stop the existing server or set another SERVER_PORT in the environment file.`);
     }
     try {
-      specs.push({ name: 'server', args: [packageBin(serverRequire, 'nodemon', 'nodemon'), '--quiet', '--signal', 'SIGTERM', '--exitcrash', 'app.js'], env });
+      const args = process.platform === 'win32'
+        ? [path.join(root, 'scripts/server-dev.cjs')]
+        : [packageBin(serverRequire, 'nodemon', 'nodemon'), '--quiet', '--signal', 'SIGTERM', '--exitcrash', 'app.js'];
+      specs.push({ name: 'server', args, env });
     } catch { throw new Error('Server dependencies are missing. Run npm run setup in the repository root.'); }
   }
   let port;

@@ -16,4 +16,4 @@ tasks:
   install:
     - "npm run setup"
   dev:
-    - "npm run dev:flexible"
+    - "node scripts/dev.cjs flexible"

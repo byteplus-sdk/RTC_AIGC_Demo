@@ -126,7 +126,7 @@ test('logs retain warnings, partial lines and source labels', async () => {
   assert.equal(text, '[web] warning\n[web] error\n');
 });
 
-function launch(platform = 'darwin') {
+function launch(platform = 'darwin', shutdownTimeout = 20000) {
   const calls = [];
   const killed = [];
   const proc = Object.assign(new EventEmitter(), {
@@ -134,7 +134,7 @@ function launch(platform = 'darwin') {
     kill: (...args) => killed.push(args),
   });
   const result = startChildren(['server', 'web'].map(name => ({ name, args: ['entry.js'], env: {} })), {
-    proc,
+    proc, shutdownTimeout,
     spawnImpl(command, args, options) {
       const child = Object.assign(new EventEmitter(), {
         pid: calls.length + 100, stdout: new PassThrough(), stderr: new PassThrough(),
@@ -161,15 +161,40 @@ test('an unexpected successful child exit reports startup failure', () => {
   assert.equal(proc.exitCode, 1);
 });
 
-test('Windows shutdown terminates both process trees', () => {
-  const { calls, killed, proc } = launch('win32');
-  assert.equal(calls[0].command, process.execPath);
-  proc.emit('SIGINT');
-  assert.deepEqual(killed, []);
+for (const signal of ['SIGINT', 'SIGBREAK']) {
+  test(`Windows ${signal} allows service cleanup before forcing exit`, async () => {
+    const { calls, killed, proc } = launch('win32', 30);
+    calls[0].child.emit('exit', 1);
+    proc.emit(signal);
+    proc.emit(signal);
+    assert.equal(calls.length, 2);
+    assert.deepEqual(killed, []);
+    calls[0].child.emit('close', 0);
+    calls[1].child.emit('close', 0);
+    await new Promise(resolve => setTimeout(resolve, 80));
+    assert.equal(calls.length, 2);
+    assert.equal(proc.exitCode, 0);
+  });
+}
+
+test('Windows shutdown forces remaining services after the grace period', async () => {
+  const { calls, proc } = launch('win32', 30);
+  proc.emit('SIGBREAK');
+  calls[1].child.emit('close', 0);
+  assert.equal(calls.length, 2);
+  await new Promise(resolve => setTimeout(resolve, 60));
+  assert.equal(calls.length, 3);
   assert.equal(calls[2].command, 'taskkill.exe');
   assert.deepEqual(calls[2].args, ['/PID', '100', '/T', '/F']);
-  assert.deepEqual(calls[3].args, ['/PID', '101', '/T', '/F']);
-  assert.equal(proc.exitCode, 0);
+  assert.equal(proc.exitCode, 1);
+});
+
+test('Windows child failure retains a nonzero exit code', async () => {
+  const { calls, proc } = launch('win32', 10);
+  calls[0].child.emit('exit', 2);
+  await new Promise(resolve => setTimeout(resolve, 100));
+  assert.equal(proc.exitCode, 2);
+  assert.equal(calls.length, 4);
 });
 
 for (const signal of ['SIGINT', 'SIGTERM']) {
