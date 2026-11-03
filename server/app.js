@@ -8,7 +8,7 @@ const bodyParser = require('koa-bodyparser');
 const cors = require('koa2-cors');
 const { Signer } = require('@byteplus/vcloud-sdk-nodejs');
 const fetch = require('node-fetch');
-const { getLlmCredentialField, getLlmApiKey } = require('./providerConfig');
+const { getLlmCredentialField, getLlmApiKey, validateGatewayConfig } = require('./providerConfig');
 const { createAgentLifecycle } = require('./agentLifecycle');
 const { preflight } = require('./preflight');
 const { loadConfig, required } = require('./config');
@@ -31,6 +31,9 @@ function validateProviderConfig(action, body, env) {
   const google = ['GOOGLE_CREDENTIALS_JSON'];
   if (isVoiceChatMode(action)) {
     const config = body?.Config;
+    for (const kind of ['ASR', 'TTS']) {
+      validateGatewayConfig(body, kind, env);
+    }
     fields.push(...({
       BytePlus: speech, Amazon: amazon, amazon, google, Google: google,
       GoogleV2: [...google, 'GOOGLE_RECOGNIZER_PATH'],
@@ -154,7 +157,7 @@ function createApp({ fetchImpl = fetch, env = process.env, probeSpeech } = {}) {
       // await getSessionToken();
 
       /** Injecting the sensitive info to request body */
-      injectSensitiveInfo(body, isVoiceChatMode(action));
+      injectSensitiveInfo(body, isVoiceChatMode(action), { action, env });
 
       ctx.body = await lifecycle.request(action, body);
       return;

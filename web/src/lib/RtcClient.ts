@@ -22,6 +22,7 @@ import BytePlusRTC, {
 import { Message } from '@arco-design/web-react';
 import RTCAIAnsExtension from '@byteplus/rtc/extension-ainr';
 import openAPIs from '@/app/index';
+import { checkCallConfiguration } from '@/app/preflight';
 import aigc from '@/config';
 import Utils from '@/utils/utils';
 import store from '@/store';
@@ -75,6 +76,9 @@ export class RtcClient {
 
   #videoCaptureDevice?: string;
 
+  #agentUpdates = new AbortController();
+  #pendingAgentUpdate?: Promise<void>;
+
   ainrExtension?: RTCAIAnsExtension;
 
   audioBotEnabled = false;
@@ -85,6 +89,9 @@ export class RtcClient {
    * @brief Create RTC engine, which is the first step.
    */
   createEngine = async (props: EngineOptions) => {
+    this.#agentUpdates.abort();
+    this.#agentUpdates = new AbortController();
+    this.#pendingAgentUpdate = undefined;
     this.config = props;
     this.basicInfo = {
       room_id: props.roomId,
@@ -166,7 +173,9 @@ export class RtcClient {
 
   leaveRoom = async () => {
     const engine = this.engine;
+    this.#agentUpdates.abort();
     try {
+      if (this.#pendingAgentUpdate) await this.#pendingAgentUpdate;
       await this.stopAgent();
     } finally {
       try {
@@ -378,11 +387,23 @@ export class RtcClient {
   /**
    * @brief Update AIGC
    */
-  updateAgent = async () => {
-    if (this.audioBotEnabled) {
-      await this.stopAgent();
+  updateAgent = (options?: { preflight: true; agentExpected: boolean }) => {
+    const { signal } = this.#agentUpdates;
+    const replace = async () => {
+      if (!this.audioBotEnabled && !options?.agentExpected) return;
+      signal.throwIfAborted();
+      if (options?.preflight) {
+        const readiness = await checkCallConfiguration(aigc.config, signal);
+        if (!readiness.ready) throw new Error(readiness.issues.map((issue) => issue.message).join('\n'));
+      }
+      signal.throwIfAborted();
+      if (this.audioBotEnabled) await this.stopAgent();
+      signal.throwIfAborted();
       await this.startAgent();
-    }
+    };
+    const update = this.#pendingAgentUpdate ? this.#pendingAgentUpdate.then(replace) : replace();
+    this.#pendingAgentUpdate = update.catch(() => {});
+    return update;
   };
 
   /**

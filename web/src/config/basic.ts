@@ -21,6 +21,7 @@ export enum Provider {
   GoogleAsrV2 = 'GoogleV2',
   Byteplus = 'BytePlusArk',
   CustomLLM = 'CustomLLM',
+  AiGateway = 'ai_gateway',
   /** Akool digital human avatar provider. */
   Akool = 'Akool',
 }
@@ -32,6 +33,13 @@ export enum ModuleType {
   Avatar = 'avatar',
 }
 
+export function usesAiGateway(settings: { 'Provider.ASR'?: Provider; 'Provider.TTS'?: Provider }) {
+  return (
+    settings['Provider.ASR'] === Provider.AiGateway ||
+    settings['Provider.TTS'] === Provider.AiGateway
+  );
+}
+
 /**
  * Voice Chat ASR
  */
@@ -40,6 +48,7 @@ export const ASR_PROVIDER_OPTIONS = [
   { value: Provider.Amazon, label: 'Amazon' },
   { value: Provider.GoogleAsrV1, label: 'Google (Speech-to-Text v1)' },
   { value: Provider.GoogleAsrV2, label: 'Google (Speech-to-Text v2)' },
+  { value: Provider.AiGateway, label: 'AI Gateway' },
 ] as const;
 
 /** AskEcho Web Search (`WebSearchAgentConfig`). */

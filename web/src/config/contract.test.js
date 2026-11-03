@@ -20,12 +20,14 @@ function keys(value, allowed, required = []) {
 }
 
 const asrFields = {
+  ai_gateway: ['ExtraData', 'ExtraHeader'],
   Amazon: ['ID', 'Secret', 'Region', 'Language'],
   BytePlus: ['Mode', 'Language', 'AppId', 'AccessToken', 'ApiResourceId', 'StreamMode', 'enable_nonstream'],
   Google: ['Language', 'Model', 'CredentialsJSON'],
   GoogleV2: ['LanguageCodes', 'Model', 'CredentialsJSON', 'RecognizerPath'],
 };
 const ttsFields = {
+  ai_gateway: [...asrFields.ai_gateway, 'Voice', 'OutputAudioPitchRate', 'OutputAudioSpeedRate', 'OutputAudioVolume'],
   BytePlus: ['app', 'audio', 'ResourceId'],
   Amazon: ['ID', 'Secret', 'VoiceID', 'Region', 'Language'],
   OpenAI: ['URL', 'APIKey', 'Model', 'Voice', 'Speed'],
@@ -112,6 +114,29 @@ test.each([Provider.Byteplus, Provider.Amazon, Provider.OpenAI, Provider.Google]
     flexible(JSON.parse(JSON.stringify(factory.config)));
   }
 );
+
+test.each(['ASR', 'TTS'])('%s gateway is independent of the other speech provider', (module) => {
+  const factory = new ConfigFactory();
+  factory.aiGateway = {
+    ASR: { ExtraHeader: '{"x-test":"asr"}' },
+    TTS: { Voice: ' custom ', ExtraData: '{"model":"test"}',
+      OutputAudioPitchRate: '-1', OutputAudioSpeedRate: '1.5', OutputAudioVolume: '0' },
+  };
+  const other = module === 'ASR' ? 'TTS' : 'ASR';
+  const otherConfig = factory.config.Config[`${other}Config`];
+  factory[`Provider.${module}`] = Provider.AiGateway;
+  const body = factory.config;
+  flexible(body);
+  expect(body.Config[`${module}Config`]).toEqual({
+    Provider: 'ai_gateway',
+    ProviderParams: module === 'ASR'
+      ? { ExtraHeader: { 'x-test': 'asr' }, ExtraData: {} }
+      : { Voice: 'custom', ExtraHeader: {},
+          ExtraData: { model: 'test' }, OutputAudioPitchRate: -1, OutputAudioSpeedRate: 1.5, OutputAudioVolume: 0 },
+  });
+  expect(body.Config[`${other}Config`]).toEqual(otherConfig);
+  expect(body.Config.SubtitleConfig.SubtitleMode).toBe(1);
+});
 
 test.each([Provider.Byteplus, Provider.OpenAI, Provider.Google, Provider.CustomLLM])(
   'LLM provider %s uses the documented discriminator', (provider) => {

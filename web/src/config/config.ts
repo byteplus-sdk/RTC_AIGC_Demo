@@ -113,6 +113,15 @@ export class ConfigFactory {
     return isRealTimeCallMode() ? Provider.OpenAI : this.#voiceChatManager.tts.provider;
   }
 
+  get aiGateway() {
+    return { ASR: this.#voiceChatManager.asr.aiGateway, TTS: this.#voiceChatManager.tts.aiGateway };
+  }
+
+  set aiGateway(value) {
+    this.#voiceChatManager.asr.aiGateway = value.ASR;
+    this.#voiceChatManager.tts.aiGateway = value.TTS;
+  }
+
   set 'Provider.Avatar'(value: Provider) {
     if (this.#manager instanceof RealTimeConfig) {
       if (value === Provider.Akool) {

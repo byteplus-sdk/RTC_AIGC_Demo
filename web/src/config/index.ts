@@ -33,6 +33,7 @@ export const VendorSVG = {
   [Provider.OpenAI]: OpenAiSVG,
   [Provider.Byteplus]: ArkSVG,
   [Provider.Akool]: ArkSVG,
+  [Provider.AiGateway]: ArkSVG,
   [BYTEPLUS_ASR_V1]: ArkSVG,
   [BYTEPLUS_ASR_V2]: ArkSVG,
   [BYTEPLUS_TTS_V1]: ArkSVG,

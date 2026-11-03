@@ -4,6 +4,7 @@
  */
 
 import { Provider } from '../basic';
+import { buildAiGatewayParams, type AiGatewaySettings } from './aiGateway';
 import { createIsEnumType } from '@/utils/type';
 import type { SeedVersion } from './seedVersion';
 
@@ -159,7 +160,10 @@ export type IVoiceType =
  *       Some sensitive fields not provided in frontend were injected by the server (See: Server/sensitive.js).
  */
 export class TTSManager {
-  provider: Provider.Byteplus | Provider.Amazon | Provider.OpenAI | Provider.Google =
+  aiGateway: AiGatewaySettings = {};
+
+  provider:
+    Provider.Byteplus | Provider.Amazon | Provider.OpenAI | Provider.Google | Provider.AiGateway =
     Provider.Byteplus;
 
   /** Seed TTS 1.0 vs 2.0 (default 2.0). */
@@ -300,6 +304,11 @@ export class TTSManager {
 
   get value() {
     switch (this.provider) {
+      case Provider.AiGateway:
+        return {
+          Provider: this.provider,
+          ProviderParams: buildAiGatewayParams(this.aiGateway, 'TTS'),
+        };
       case Provider.Byteplus: {
         const bp = this.#paramsMap[this.provider].ProviderParams;
         bp.ResourceId =
