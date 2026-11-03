@@ -32,9 +32,7 @@ function validateProviderConfig(action, body, env) {
   if (isVoiceChatMode(action)) {
     const config = body?.Config;
     for (const kind of ['ASR', 'TTS']) {
-      if (config?.[`${kind}Config`]?.Provider === 'ai_gateway') {
-        validateGatewayConfig(body, kind, env);
-      }
+      validateGatewayConfig(body, kind, env);
     }
     fields.push(...({
       BytePlus: speech, Amazon: amazon, amazon, google, Google: google,

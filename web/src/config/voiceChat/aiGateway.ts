@@ -1,4 +1,4 @@
-import { validateAiGatewayParams } from '../../../../shared/aiGateway.mjs';
+import { isJsonObject, validateAiGatewayParams } from '../../../../shared/aiGateway.mjs';
 
 export interface AiGatewaySettings {
   Voice?: string;
@@ -13,7 +13,7 @@ export type SpeechModule = 'ASR' | 'TTS';
 
 export class GatewayJsonError extends SyntaxError {
   constructor(readonly module: SpeechModule, readonly field: 'ExtraData' | 'ExtraHeader') {
-    super(`Enter valid JSON for ${module} ${field}.`);
+    super(`Enter a JSON object for ${module} ${field}.`);
   }
 }
 
@@ -25,6 +25,7 @@ export function buildAiGatewayParams(settings: AiGatewaySettings, module: Speech
     } catch {
       throw new GatewayJsonError(module, field);
     }
+    if (!isJsonObject(params[field])) throw new GatewayJsonError(module, field);
   }
   if (module === 'TTS') {
     params.Voice = settings.Voice?.trim();

@@ -69,10 +69,20 @@ for (const action of [
 const gatewayEnv = {
   ...env,
   ASR_GATEWAY_API_URL: 'wss://asr.example/ws', ASR_GATEWAY_API_KEY: 'asr-key',
-  TTS_GATEWAY_API_URL: 'ws://tts.example/ws', TTS_GATEWAY_API_KEY: 'tts-key',
+  TTS_GATEWAY_API_URL: 'wss://tts.example/ws', TTS_GATEWAY_API_KEY: 'tts-key',
 };
 
 const gateway = (ProviderParams) => ({ Provider: 'ai_gateway', ProviderParams });
+
+async function assertGatewayRejected(base, body, message) {
+  const check = await post(`${base}/preflight?action=StartVoiceChat`, body);
+  const result = await check.json();
+  assert.equal(result.ready, false);
+  assert.match(result.issues[0].message, message);
+  const start = await post(`${base}/proxyAIGCFetch?action=StartVoiceChat`, body);
+  assert.equal(start.status, 400);
+  assert.equal((await start.json()).Result, result.issues[0].message);
+}
 
 test('provider validation succeeds without returning credentials or changing the request', () => {
   const body = { Config: { ASRConfig: gateway({}), TTSConfig: gateway({ Voice: 'test-voice' }) } };
@@ -83,7 +93,7 @@ test('provider validation succeeds without returning credentials or changing the
 
 test('only StartVoiceChat binds each selected gateway to its deployed URL and key', async (t) => {
   const ASRConfig = gateway({ ExtraHeader: { Authorization: 'session-value', 'x-model': 'asr' } });
-  const TTSConfig = gateway({ Voice: 'test-voice', OutputAudioVolume: 0, ExtraData: ['model', 2] });
+  const TTSConfig = gateway({ Voice: 'test-voice', OutputAudioVolume: 0, ExtraData: { models: ['model', 2] } });
   const body = { Config: { LLMConfig: { Provider: 'OpenAI' }, ASRConfig, TTSConfig } };
   let forwarded;
   const base = await serve(t, {
@@ -127,7 +137,8 @@ for (const kind of ['ASR', 'TTS']) {
     const ready = () => post(`${base}/preflight?action=StartVoiceChat`, body).then((res) => res.json());
     assert.deepEqual(await ready(), { ready: true, issues: [] });
     for (const [field, value] of [[keyField, ' '], [urlField, ''], [urlField, 'https://invalid.example'],
-      [urlField, 'wss:not-an-endpoint'], [urlField, 'wss://user:pass@invalid.example/ws'], [urlField, 'ws://invalid.example/#']]) {
+      [urlField, 'wss:not-an-endpoint'], [urlField, 'wss://user:pass@invalid.example/ws'],
+      [urlField, 'wss://invalid.example/#'], [urlField, 'ws://invalid.example/ws']]) {
       selected[field] = value;
       const result = await ready();
       assert.equal(result.ready, false);
@@ -151,16 +162,47 @@ test('forged gateway destinations and credentials are rejected by preflight and 
       { providerparams: { URL: target } },
     ]) {
       const body = { Config: { ...config, [field]: { ...config[field], ...patch } } };
-      const check = await post(`${base}/preflight?action=StartVoiceChat`, body);
-      const result = await check.json();
-      assert.equal(result.ready, false);
-      assert.match(result.issues[0].message, /session parameters|ambiguous/);
-      const start = await post(`${base}/proxyAIGCFetch?action=StartVoiceChat`, body);
-      assert.equal(start.status, 400);
-      assert.equal((await start.json()).Result, result.issues[0].message);
+      await assertGatewayRejected(base, body, /session parameters|exact field name/);
     }
   }
 });
+
+test('preflight and start reject aliases anywhere on the speech provider path', async (t) => {
+  const upstream = t.mock.fn();
+  const base = await serve(t, { env: gatewayEnv, fetchImpl: upstream });
+  for (const kind of ['ASR', 'TTS']) {
+    const field = `${kind}Config`;
+    const params = { URL: 'wss://untrusted.example/ws', APIKey: 'client-key' };
+    const config = {
+      ASRConfig: gateway({}), TTSConfig: gateway({ Voice: 'voice' }), LLMConfig: { Provider: 'OpenAI' },
+    };
+    for (const [name, body] of [
+      ['Provider', { Config: { ...config, [field]: { provider: 'ai_gateway', ProviderParams: params } } }],
+      ['Provider', { Config: { ...config, [field]: { Provider: 'Google', provider: 'ai_gateway', ProviderParams: params } } }],
+      ['ProviderParams', { Config: { ...config, [field]: { Provider: 'ai_gateway', providerparams: params } } }],
+      [field, { Config: { ...config, [field]: undefined, [field.toLowerCase()]: gateway(params) } }],
+      ['Config', { config: { ...config, [field]: gateway(params) } }],
+    ]) {
+      await assertGatewayRejected(base, body, new RegExp(`exact field name ${name}$`));
+    }
+  }
+  assert.equal(upstream.mock.callCount(), 0);
+});
+
+for (const kind of ['ASR', 'TTS']) {
+  test(`${kind} gateway preflight and start require JSON objects for extra data and headers`, async (t) => {
+    const upstream = t.mock.fn();
+    const base = await serve(t, { env: gatewayEnv, fetchImpl: upstream });
+    for (const field of ['ExtraData', 'ExtraHeader']) {
+      for (const value of [null, [], 'text', 1, false]) {
+        const config = { ASRConfig: gateway({}), TTSConfig: gateway({ Voice: 'voice' }), LLMConfig: { Provider: 'OpenAI' } };
+        config[`${kind}Config`].ProviderParams[field] = value;
+        await assertGatewayRejected(base, { Config: config }, new RegExp(`${field} must be a JSON object`));
+      }
+    }
+    assert.equal(upstream.mock.callCount(), 0);
+  });
+}
 
 test('invalid AI Gateway session parameters fail the provider check', () => {
   for (const [overrides, message] of [

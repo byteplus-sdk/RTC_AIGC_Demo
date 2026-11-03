@@ -278,7 +278,8 @@ function AISettings() {
     const previousScene = room.scene;
     try {
       const payload: Partial<ConfigFactory> = getSettingsToApply(data, previous);
-      if (!isEqual(payload, getSettings())) {
+      const needsRestart = room.isAIGCEnable && !RtcClient.audioBotEnabled;
+      if (needsRestart || !isEqual(payload, getSettings())) {
         if (
           !isLlmProviderAllowedForWebSearch(
             payload['Provider.LLM'] || room.aiConfig['Provider.LLM']
@@ -287,7 +288,7 @@ function AISettings() {
           payload.LLMWebSearchEnabled = false;
         }
         dispatch(updateAIConfig(payload));
-        await RtcClient.updateAgent();
+        await RtcClient.updateAgent({ preflight: true, agentExpected: room.isAIGCEnable });
         dispatch(clearHistoryMsg());
         dispatch(updateIsShowSubtitle(payload['Provider.Avatar'] === Provider.None));
       }

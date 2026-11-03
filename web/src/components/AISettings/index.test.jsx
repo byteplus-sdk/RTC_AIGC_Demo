@@ -6,7 +6,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import config from '@/config';
 import { Provider } from '@/config/basic';
 import { getConfigSnapshot } from '@/config/settings';
-import roomReducer, { localJoinRoom, localLeaveRoom, setHistoryMsg, updateAIConfig } from '@/store/slices/room';
+import roomReducer, { localJoinRoom, localLeaveRoom, setHistoryMsg, updateAIGCState, updateAIConfig } from '@/store/slices/room';
 import RtcClient from '@/lib/RtcClient';
 import AISettings from './index';
 
@@ -99,18 +99,30 @@ test('Apply uses only effective gateway settings and keeps applied settings afte
     expect(store.getState().room.msgHistory.map((msg) => msg.value)).toEqual(['keep']);
     await click('Configure');
     await click('Use gateway ASR');
-    await setExtraData('invalid json');
-    await click('Apply');
-    expect(container.querySelector('[role="alert"]').textContent).toContain('ASR ExtraData');
-    expect(container.querySelector('#gateway-ASR-ExtraData').getAttribute('aria-invalid')).toBe('true');
-    expect(RtcClient.updateAgent).not.toHaveBeenCalled();
+    for (const invalid of ['invalid json', '[]', 'null', '"text"']) {
+      await setExtraData(invalid);
+      await click('Apply');
+      expect(container.querySelector('[role="alert"]').textContent).toContain('JSON object for ASR ExtraData');
+      expect(container.querySelector('#gateway-ASR-ExtraData').getAttribute('aria-invalid')).toBe('true');
+      expect(RtcClient.updateAgent).not.toHaveBeenCalled();
+    }
     await setExtraData('{"model":"session","__wrapped__":true}');
+    act(() => store.dispatch(updateAIGCState({ isAIGCEnable: true })));
+    RtcClient.audioBotEnabled = true;
     RtcClient.updateAgent.mockRejectedValueOnce(new Error('Restart failed'));
     await click('Apply');
     expect(config.aiGateway.ASR).toEqual({});
     expect(config['Provider.ASR']).toBe(previous['Provider.ASR']);
+    RtcClient.audioBotEnabled = false;
+    await click('Use Seed ASR');
     await click('Apply');
     expect(RtcClient.updateAgent).toHaveBeenCalledTimes(2);
+    expect(RtcClient.updateAgent).toHaveBeenLastCalledWith({ preflight: true, agentExpected: true });
+    RtcClient.audioBotEnabled = true;
+    await click('Configure');
+    await click('Use gateway ASR');
+    await setExtraData('{"model":"session","__wrapped__":true}');
+    await click('Apply');
     const extraData = { model: 'session', __wrapped__: true };
     expect(config.config.Config.ASRConfig.ProviderParams).toEqual({ ExtraData: extraData, ExtraHeader: {} });
     act(() => {
@@ -122,12 +134,13 @@ test('Apply uses only effective gateway settings and keeps applied settings afte
     await click('Configure');
     await setExtraData('{ "__wrapped__": true, "model": "session" }');
     await click('Apply');
-    expect(RtcClient.updateAgent).toHaveBeenCalledTimes(2);
+    expect(RtcClient.updateAgent).toHaveBeenCalledTimes(3);
     expect(store.getState().room.msgHistory.map((msg) => msg.value)).toEqual(['one two']);
     act(() => store.dispatch(localLeaveRoom()));
     expect(store.getState().room.aiConfig['Provider.ASR']).toBe(Provider.AiGateway);
     expect(config.config.Config.ASRConfig.ProviderParams.ExtraData).toEqual(extraData);
   } finally {
+    RtcClient.audioBotEnabled = false;
     act(() => root.unmount());
     Object.assign(config, previous);
   }

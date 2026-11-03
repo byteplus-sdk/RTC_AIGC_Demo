@@ -34,18 +34,19 @@ function getGatewayCredentials(kind, env) {
   return { URL: required(env[urlField], urlField), APIKey: required(env[keyField], keyField) };
 }
 
+function readCanonicalField(parent, name) {
+  if (Object.keys(parent ?? {}).some((key) => key !== name && key.toUpperCase() === name.toUpperCase())) {
+    throw new Error(`Use the exact field name ${name}`);
+  }
+  return parent?.[name];
+}
+
 function validateGatewayConfig(body, kind, env) {
-  const field = `${kind}Config`;
-  const speech = body.Config[field];
   try {
-    // Keep the credential path unambiguous for case-insensitive RTC decoders.
-    const path = [[body, 'Config'], [body.Config, field], [speech, 'Provider'], [speech, 'ProviderParams']];
-    for (const [parent, name] of path) {
-      if (Object.keys(parent).some((key) => key !== name && key.toUpperCase() === name.toUpperCase())) {
-        throw new Error(`${kind} AI Gateway has an ambiguous ${name} field`);
-      }
-    }
-    validateAiGatewayParams(speech.ProviderParams, kind);
+    const config = readCanonicalField(body, 'Config');
+    const speech = readCanonicalField(config, `${kind}Config`);
+    if (readCanonicalField(speech, 'Provider') !== 'ai_gateway') return;
+    validateAiGatewayParams(readCanonicalField(speech, 'ProviderParams'), kind);
   } catch (error) {
     error.status = 400;
     throw error;
@@ -53,8 +54,8 @@ function validateGatewayConfig(body, kind, env) {
 
   const { URL: url } = getGatewayCredentials(kind, env);
   const parsed = URL.parse(url);
-  if (!parsed || !/^wss?:\/\//i.test(url) || parsed.username || parsed.password || url.includes('#')) {
-    throw new Error(`${kind}_GATEWAY_API_URL must be a WebSocket URL (ws:// or wss://) without credentials or a fragment`);
+  if (!parsed || !/^wss:\/\//i.test(url) || parsed.username || parsed.password || url.includes('#')) {
+    throw new Error(`${kind}_GATEWAY_API_URL must be a secure WebSocket URL (wss://) without credentials or a fragment`);
   }
 }
 

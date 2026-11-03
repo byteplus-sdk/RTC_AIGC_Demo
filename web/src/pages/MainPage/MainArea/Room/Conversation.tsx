@@ -9,7 +9,7 @@ import { Tag, Spin } from '@arco-design/web-react';
 import { RootState } from '@/store';
 import Loading from '@/components/Loading/HorizonLoading';
 import Config from '@/config';
-import { Provider } from '@/config/basic';
+import { Provider, usesAiGateway } from '@/config/basic';
 import { isRealTimeCallMode } from '@/app/base';
 import AIAvatarReadying from '@/components/AIAvatarLoading';
 import USER_AVATAR from '@/assets/img/UserAvatar.png';
@@ -36,10 +36,8 @@ function Conversation(props: React.HTMLAttributes<HTMLDivElement>) {
   const isSupportedSubtitle =
     isShowSubtitle &&
     (isRealTimeCallMode() ||
-      (!isRealTimeCallMode() &&
-        [Provider.Byteplus, Provider.OpenAI, Provider.Google, Provider.AiGateway].includes(
-          Config['Provider.TTS']
-        )));
+      usesAiGateway(Config) ||
+      [Provider.Byteplus, Provider.OpenAI, Provider.Google].includes(Config['Provider.TTS']));
 
   useEffect(() => {
     const container = containerRef.current;
