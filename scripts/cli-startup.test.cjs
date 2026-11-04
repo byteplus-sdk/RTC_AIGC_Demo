@@ -1,5 +1,5 @@
 const assert = require('node:assert/strict');
-const { spawn } = require('node:child_process');
+const { spawn, spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const net = require('node:net');
 const os = require('node:os');
@@ -46,14 +46,20 @@ test('CLI startup applies selected ports and the project environment before vali
   child.stderr.on('data', data => { output += data; });
   const exited = new Promise((resolve, reject) => {
     child.once('error', reject);
-    child.once('exit', (code, signal) => resolve({ code, signal }));
+    child.once('close', (code, signal) => resolve({ code, signal }));
   });
-  t.after(async () => {
+  async function stop() {
     if (child.exitCode === null && child.signalCode === null) {
-      child.kill('SIGTERM');
-      await exited;
+      if (process.platform === 'win32') {
+        const cleanup = spawnSync('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], { timeout: 5000 });
+        assert.equal(cleanup.status, 0, cleanup.error?.message || cleanup.stderr?.toString());
+      } else {
+        child.kill('SIGTERM');
+      }
     }
-  });
+    return exited;
+  }
+  t.after(stop);
   let ready = false;
   const deadline = Date.now() + 12000;
   while (Date.now() < deadline && child.exitCode === null) {
@@ -71,8 +77,8 @@ test('CLI startup applies selected ports and the project environment before vali
     }
   }
   assert.equal(ready, true, output);
-  child.kill('SIGTERM');
-  assert.deepEqual(await exited, { code: 0, signal: null }, output);
+  const result = await stop();
+  if (process.platform !== 'win32') assert.deepEqual(result, { code: 0, signal: null }, output);
   assert.equal(await portAvailable(webPort, '127.0.0.1'), true);
   assert.equal(await portAvailable(serverPort, '127.0.0.1'), true);
 });

@@ -231,12 +231,17 @@ test('shutdown sends matching Stop requests for both modes through the proxy tra
   assert.equal(res.status, 503);
 });
 
-test('SIGTERM stops active agents and exits the server process', { timeout: 10000 }, async (t) => {
+for (const stopSignal of ['SIGTERM', 'SIGBREAK']) {
+test(`${stopSignal} stops active agents and exits the server process`, { timeout: 10000, skip: stopSignal === 'SIGTERM' && process.platform === 'win32' }, async (t) => {
   const { spawn } = require('node:child_process');
   const child = spawn(process.execPath, ['-e', `
     const Koa = require('koa');
     const listen = Koa.prototype.listen;
     Koa.prototype.listen = function () { return listen.call(this, 0, '127.0.0.1'); };
+    if (${JSON.stringify(stopSignal)} === 'SIGBREAK') {
+      Object.defineProperty(process, 'platform', { value: 'win32' });
+      process.on('message', () => process.emit('SIGBREAK'));
+    }
     const { startServer } = require('./app');
     const server = startServer({
       env: ${JSON.stringify(env)},
@@ -269,10 +274,13 @@ test('SIGTERM stops active agents and exits the server process', { timeout: 1000
     AppId: 'test-app', RoomId: 'room', TaskId: 'user',
   });
   assert.equal(res.status, 200);
-  child.kill('SIGTERM');
+  if (stopSignal === 'SIGBREAK') child.send({ stop: true });
+  else child.kill(stopSignal);
   assert.equal(await exited, 0, errors);
   assert.deepEqual(calls, ['StartVoiceChatWithRealtimeAPI', 'StopVoiceChatWithRealtimeAPI']);
 });
+
+}
 
 test('accepted starts with delayed responses receive compensating Stop requests', async (t) => {
   const http = require('node:http');
