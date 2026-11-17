@@ -6,7 +6,7 @@
 const Koa = require('koa');
 const bodyParser = require('koa-bodyparser');
 const cors = require('koa2-cors');
-const { Signer } = require('@byteplus/vcloud-sdk-nodejs');
+const { signQuery } = require('./signing');
 const fetch = require('node-fetch');
 const { getLlmCredentialField, getLlmApiKey, validateGatewayConfig } = require('./providerConfig');
 const { createAgentLifecycle } = require('./agentLifecycle');
@@ -71,7 +71,6 @@ function createApp({ fetchImpl = fetch, env = process.env, probeSpeech } = {}) {
   const app = new Koa();
   const controller = new AbortController();
   const lifecycle = createAgentLifecycle(async (action, body) => {
-    /** Refer to https://www.npmjs.com/package/@byteplus/vcloud-sdk-nodejs to get more information. */
     const openApiRequestDataRTC = {
       region: 'ap-southeast-1',
       method: 'POST',
@@ -84,8 +83,7 @@ function createApp({ fetchImpl = fetch, env = process.env, probeSpeech } = {}) {
         'Content-Type': 'application/json',
       },
     };
-    const rtcSigner = new Signer(openApiRequestDataRTC, 'rtc');
-    const rtcSignedUri = `https://rtc.ap-southeast-1.byteplusapi.com?${rtcSigner.getSignUrl(config.credential)}`;
+    const rtcSignedUri = `https://rtc.ap-southeast-1.byteplusapi.com?${signQuery(openApiRequestDataRTC, 'rtc', config.credential)}`;
 
     /** Refer to https://docs.byteplus.com/en/docs/byteplus-rtc/docs-69828 to get more information. */
     const result = await fetchImpl(rtcSignedUri, {
