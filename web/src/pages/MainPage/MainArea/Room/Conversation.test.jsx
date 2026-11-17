@@ -6,7 +6,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import config from '@/config';
 import { Provider } from '@/config/basic';
 import { getConfigSnapshot } from '@/config/settings';
-import roomReducer, { localJoinRoom, setHistoryMsg, updateAIConfig, updateIsShowSubtitle } from '@/store/slices/room';
+import roomReducer, { localJoinRoom, setHistoryMsg, updateAIConfig, updateIsShowSubtitle, updateAITalkState, remoteUserJoin } from '@/store/slices/room';
 import Conversation from './Conversation';
 
 vi.mock('@byteplus/rtc', () => ({
@@ -31,6 +31,27 @@ test('gateway ASR and Amazon TTS display both speakers when subtitles are enable
     act(() => store.dispatch(updateIsShowSubtitle(false)));
     expect(node.textContent).not.toContain('User transcript');
     expect(node.textContent).not.toContain('Agent reply');
+  } finally {
+    act(() => root.unmount());
+    Object.assign(config, previous);
+  }
+});
+
+
+test.each([true, false])('welcome subtitle loading follows paragraph completion: %s', (paragraph) => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  const previous = getConfigSnapshot();
+  const store = configureStore({ reducer: { room: roomReducer } });
+  const node = document.createElement('div');
+  const root = createRoot(node);
+  try {
+    store.dispatch(updateAIConfig({ 'Provider.TTS': Provider.Byteplus }));
+    store.dispatch(remoteUserJoin({ userId: config.BotName }));
+    store.dispatch(setHistoryMsg({ user: config.BotName, text: 'Welcome', paragraph, definite: true }));
+    store.dispatch(updateAITalkState({ isAITalking: true }));
+    act(() => root.render(<ReduxProvider store={store}><Conversation /></ReduxProvider>));
+    expect(node.textContent).toContain('Welcome');
+    expect(Boolean(node.querySelector('[class*="loader"]'))).toBe(!paragraph);
   } finally {
     act(() => root.unmount());
     Object.assign(config, previous);
