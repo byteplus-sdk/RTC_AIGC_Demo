@@ -69,7 +69,7 @@ function Conversation(props: React.HTMLAttributes<HTMLDivElement>) {
         ''
       )}
       {isSupportedSubtitle &&
-        msgHistory?.map(({ value, user, isInterrupted }, index) => {
+        msgHistory?.map(({ value, user, isInterrupted, paragraph }, index) => {
           const isUserMsg = user === userId;
           const isRobotMsg = user === Config.BotName || user.includes('voiceChat_');
           if (!isUserMsg && !isRobotMsg) {
@@ -93,7 +93,9 @@ function Conversation(props: React.HTMLAttributes<HTMLDivElement>) {
                     {/* Realtime non-streaming mode */}
                     {!isRealTimeCallMode() &&
                     isAIReady &&
-                    (isUserTalking || isAITalking) &&
+                    !paragraph &&
+                    !isInterrupted &&
+                    (isUserMsg ? isUserTalking : isAITalking) &&
                     index === msgHistory.length - 1 ? (
                       <Loading gap={3} className={styles.loading} dotClassName={styles.dot} />
                     ) : (

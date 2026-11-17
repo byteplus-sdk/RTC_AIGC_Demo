@@ -264,6 +264,10 @@ export class ConfigFactory {
       : this.#voiceChatManager.avatar.provider !== Provider.None;
   }
 
+  get subtitleMode() {
+    return isRealTimeCallMode() ? 0 : this.#voiceChatManager.subtitleMode;
+  }
+
   /**
    * @refer
    * - Flexible mode(VoiceChat): https://docs.byteplus.com/en/docs/byteplus-rtc/docs-1558163

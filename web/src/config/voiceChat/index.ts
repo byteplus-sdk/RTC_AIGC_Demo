@@ -74,6 +74,17 @@ export class VoiceChatManager {
     this.llm.systemMessages = value || [];
   }
 
+  get subtitleMode() {
+    return this.asr.provider === Provider.AiGateway ||
+      this.tts.provider === Provider.AiGateway ||
+      this.avatar.value.Enabled ||
+      (this.tts.provider === Provider.Byteplus && this.tts.seedTtsVersion === '2.0') ||
+      this.tts.provider === Provider.OpenAI ||
+      this.tts.provider === Provider.Google
+      ? 1
+      : 0;
+  }
+
   get config() {
     const llmConfig = this.llm.value;
     this.mcp.applyToLlmRow(this.llm.provider, llmConfig);
@@ -87,15 +98,7 @@ export class VoiceChatManager {
         TTSConfig: ttsConfig,
         AvatarConfig: this.avatar.value,
         SubtitleConfig: {
-          SubtitleMode:
-            this.asr.provider === Provider.AiGateway ||
-            this.tts.provider === Provider.AiGateway ||
-            this.avatar.value.Enabled ||
-            (ttsConfig.ProviderParams as { ResourceId?: string }).ResourceId === 'seed-tts-2.0' ||
-            this.tts.provider === Provider.OpenAI ||
-            this.tts.provider === Provider.Google
-              ? 1
-              : 0,
+          SubtitleMode: this.subtitleMode,
         },
         ...(webSearch ? { WebSearchAgentConfig: webSearch } : {}),
       },

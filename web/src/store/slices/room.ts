@@ -13,7 +13,6 @@ import {
 import { CALL_TYPE } from '@/app/base';
 import { getConfigSnapshot } from '@/config/settings';
 import config from '@/config';
-import { usesAiGateway } from '@/config/basic';
 import { SCENE } from '@/config/scene';
 
 export interface IUser {
@@ -252,21 +251,19 @@ export const roomSlice = createSlice({
     setHistoryMsg: (state, { payload }) => {
       const { paragraph, definite } = payload;
       const lastMsg = state.msgHistory.at(-1)! || {};
-      /** Whether need to create a new sentence */
       const fromBot = payload.user === config.BotName || payload.user.includes('voiceChat_');
-      /**
-       * Bot's sentences:
-       *  1. use definite to determine whether to append new content when SubtitleMode = 0 (which is the default value when avatar is disabled)
-       *  2. use paragraph to determine whether to append new content when SubtitleMode = 1 (which is the default value when avatar is enabled)
-       * User's sentences use paragraph to determine whether to append new content
-       */
-      const currentSubtitleMode = config.AvatarEnable || usesAiGateway(config);
+      if (fromBot) {
+        state.isAITalking = !paragraph;
+      } else {
+        state.isUserTalking = !paragraph;
+      }
+      const currentSubtitleMode = config.subtitleMode === 1;
       const lastMsgCompleted =
         !fromBot || currentSubtitleMode ? lastMsg.paragraph : lastMsg.definite;
 
       if (state.msgHistory.length) {
         /** If the last sentence is complete, add a new sentence */
-        if (lastMsgCompleted) {
+        if (lastMsgCompleted || lastMsg.user !== payload.user) {
           state.msgHistory.push({
             value: payload.text,
             time: new Date().toString(),
@@ -285,11 +282,6 @@ export const roomSlice = createSlice({
           lastMsg.paragraph = paragraph;
           lastMsg.definite = definite;
           lastMsg.user = payload.user;
-          if (fromBot) {
-            state.isAITalking = !paragraph;
-          } else {
-            state.isUserTalking = !paragraph;
-          }
         }
       } else {
         /** The first word of the first sentence will not be interrupted */
@@ -297,6 +289,7 @@ export const roomSlice = createSlice({
           value: payload.text,
           time: new Date().toString(),
           user: payload.user,
+          definite,
           paragraph,
         });
       }
