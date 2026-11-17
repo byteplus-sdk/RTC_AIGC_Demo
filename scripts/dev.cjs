@@ -145,6 +145,10 @@ function startChildren(specs, { spawnImpl = spawn, proc = process, shutdownTimeo
     prefixOutput(child.stderr, spec.name, proc.stderr);
     child.once('error', error => { console.error(`[${spec.name}] ${error.message}`); stop(1); });
     child.once('exit', (code, signal) => {
+      if (stopping) {
+        if (!detached && spec.name === 'server' && code && (code >>> 0) !== 0xc000013a) proc.exitCode ||= code;
+        return;
+      }
       const failed = () => {
         if (stopping) return;
         console.error(`[${spec.name}] Exited (${signal || code}). Restart with npm run dev:${spec.name}.`);

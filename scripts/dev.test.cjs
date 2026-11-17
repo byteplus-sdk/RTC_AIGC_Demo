@@ -175,6 +175,33 @@ for (const signal of ['SIGINT', 'SIGBREAK']) {
     assert.equal(calls.length, 2);
     assert.equal(proc.exitCode, 0);
   });
+
+  test(`Windows ${signal} preserves backend cleanup failure`, async () => {
+    const { calls, proc } = launch('win32', 30);
+    proc.emit(signal);
+    calls[0].child.emit('exit', 1);
+    calls[0].child.emit('close', 1);
+    calls[1].child.emit('exit', 0xc000013a);
+    calls[1].child.emit('close', 0xc000013a);
+    proc.emit(signal);
+    await new Promise(resolve => setTimeout(resolve, 80));
+    assert.equal(calls.length, 2);
+    assert.equal(proc.exitCode, 1);
+  });
+}
+
+for (const code of [0, 0xc000013a, -1073741510]) {
+  test(`Windows console termination ${code} retains successful shutdown`, async () => {
+    const { calls, proc } = launch('win32', 30);
+    proc.emit('SIGBREAK');
+    calls[0].child.emit('exit', code);
+    calls[0].child.emit('close', code);
+    calls[1].child.emit('exit', 1);
+    calls[1].child.emit('close', 1);
+    await new Promise(resolve => setTimeout(resolve, 80));
+    assert.equal(calls.length, 2);
+    assert.equal(proc.exitCode, 0);
+  });
 }
 
 test('Windows shutdown forces remaining services after the grace period', async () => {
