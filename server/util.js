@@ -3,7 +3,7 @@
  * SPDX-license-identifier: BSD-3-Clause
  */
 
-const { Signer } = require('@byteplus/vcloud-sdk-nodejs');
+const { signQuery } = require('./signing');
 const fetch = require('node-fetch');
 const TokenManager = require('./token');
 const Privileges = require('./token').privileges;
@@ -38,10 +38,7 @@ const getSessionToken = async () => {
       'Content-Type': 'application/x-www-form-urlencoded',
     },
   };
-  const signer = new Signer(openApiRequestDataSTS, 'sts');
-  const stsSignedUri = `https://sts.ap-southeast-1.byteplusapi.com?${signer.getSignUrl(
-    stsAssumeRoleSigningCreds
-  )}`;
+  const stsSignedUri = `https://sts.ap-southeast-1.byteplusapi.com?${signQuery(openApiRequestDataSTS, 'sts', stsAssumeRoleSigningCreds)}`;
   const sts = await fetch(stsSignedUri, {
     method: 'GET',
     headers: openApiRequestDataSTS.headers,

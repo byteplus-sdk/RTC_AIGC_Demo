@@ -6,7 +6,6 @@
   "license": "BSD-3-Clause",
   "private": true,
   "dependencies": {
-    "@byteplus/vcloud-sdk-nodejs": "^1.0.2",
     "koa": "^2.15.3",
     "koa-bodyparser": "^4.4.1",
     "koa2-cors": "^2.0.6",
@@ -16,6 +15,11 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.0"
+  },
+  "overrides": {
+    "nodemon": {
+      "minimatch": "^11.0.1"
+    }
   },
   "scripts": {
     "dev": "nodemon --signal SIGTERM app.js",
