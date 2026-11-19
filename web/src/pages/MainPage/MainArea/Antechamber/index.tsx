@@ -77,12 +77,11 @@ function Antechamber() {
       />
       {readiness && !readiness.ready && (
         <div className={style.readiness} role="alert">
-          <details>
-            <summary>Call setup required</summary>
+          <div>
             {readiness.issues.map((issue) => (
               <p key={issue.stage + issue.message}>{issue.message}</p>
             ))}
-          </details>
+          </div>
           <button type="button" onClick={() => setAttempt((value) => value + 1)}>
             Retry
           </button>
