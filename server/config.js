@@ -6,7 +6,11 @@ function required(value, name) {
 function loadConfig(env = process.env) {
   const issues = configIssues(env);
   if (issues.length) throw new Error(issues.join('\n'));
-  return { ...serverConfig(env), ...manualCredentials(env) };
+  const common = serverConfig(env);
+  if (env.BYTEPLUS_RTC_CLI_PATH?.trim()) {
+    return { ...common, cliPath: env.BYTEPLUS_RTC_CLI_PATH.trim(), projectDir: env.BYTEPLUS_RTC_PROJECT_DIR.trim() };
+  }
+  return { ...common, ...manualCredentials(env) };
 }
 
 function serverConfig(env) {
@@ -46,7 +50,12 @@ function manualCredentialIssues(env) {
 }
 
 function configIssues(env) {
-  return [...serverConfigIssues(env), ...manualCredentialIssues(env)];
+  const issues = serverConfigIssues(env);
+  if (env.BYTEPLUS_RTC_CLI_PATH?.trim()) {
+    if (!env.BYTEPLUS_RTC_PROJECT_DIR?.trim()) issues.push('BYTEPLUS_RTC_PROJECT_DIR is required');
+    return issues;
+  }
+  return issues.concat(manualCredentialIssues(env));
 }
 
 module.exports = { loadConfig, required, configIssues, serverConfigIssues };

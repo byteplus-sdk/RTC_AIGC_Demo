@@ -4,11 +4,26 @@ Talk to an AI agent in your browser, or share your screen and ask it to explain
 what you see. This React demo supports OpenAI Realtime and a Flexible mode
 where you choose the speech recognition, language model, and text-to-speech providers.
 
-[Try the online demo](https://demo.byteplus.com/rtc/solution/aigc) · [Run locally](#setup-and-configuration)
+[Try the online demo](https://demo.byteplus.com/rtc/solution/aigc) · [CLI setup](#cli-setup) · [Manual setup](#manual-setup)
 
 ## Setup and configuration
 
-Use Node.js 22 (>=22.13) and npm 10. Run from the repository root:
+Use Node.js 22 (>=22.13) and npm 10. Choose one setup path below.
+
+### CLI setup
+
+The CLI fills in `.env.local` with your RTC app credentials and the resources you choose for Flexible (model and speech), Realtime (your OpenAI API key), or both.
+
+```shell
+npm install -g @byteplus/convo-cli
+convo-cli auth login --browser=open
+convo-cli agent resources --write
+convo-cli dev
+```
+
+### Manual setup
+
+From the cloned Demo root, install dependencies and create your local configuration.
 
 ```shell
 nvm use
@@ -40,13 +55,18 @@ For the BytePlus speech example, enable both ASR and TTS for your speech applica
 Credential sources: [RTC console](https://console.byteplus.com/rtc/listRTC), [IAM key management](https://console.byteplus.com/iam/keymanage) and [ModelArk console](https://console.byteplus.com/ark/region:ark+ap-southeast-1/endpoint).
 For other Flexible providers, see [.env.example](.env.example).
 
-## Quick start
+Start the demo:
 
 ```shell
 npm run dev
 ```
 
-Open the printed web URL. Select **Call now** for Flexible (default). For Realtime, open **Configure**, choose **End to End Solution**, then select **Apply** and **Call now**.
+## Make a call
+
+Open the web URL printed in the terminal.
+
+- **Flexible (default)** — Select **Call now**.
+- **Realtime** — Open **Configure**, switch **Cascading Solution** to **End to End Solution**, then select **Apply** and **Call now**.
 
 ## Optional configuration
 

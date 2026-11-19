@@ -10,6 +10,7 @@ if (require.main === module) {
   require('dotenv').config({ path: process.env.DEMO_ENV_FILE || require('path').resolve(__dirname, '../.env.local') });
 }
 
+const { createCliRuntime } = require('./cliRuntime');
 const { createManualRuntime } = require('./manualRuntime');
 const { createAgentLifecycle } = require('./agentLifecycle');
 const { loadConfig } = require('./config');
@@ -22,7 +23,8 @@ function createApp({ fetchImpl, env = process.env, probeSpeech } = {}) {
   const config = loadConfig(env);
   const app = new Koa();
   const controller = new AbortController();
-  const runtime = createManualRuntime(config, { env, fetchImpl, probeSpeech, signal: controller.signal });
+  const createRuntime = config.cliPath ? createCliRuntime : createManualRuntime;
+  const runtime = createRuntime(config, { env, fetchImpl, probeSpeech, signal: controller.signal });
   const lifecycle = createAgentLifecycle(runtime.invoke);
   app.stopActiveAgents = lifecycle.stop;
   app.abortAgentRequests = () => controller.abort();
