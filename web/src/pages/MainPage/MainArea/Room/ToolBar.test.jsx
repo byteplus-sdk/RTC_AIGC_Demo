@@ -149,7 +149,12 @@ test('pending camera acquisition stays attached to its originating engine', asyn
         complete = resolve;
       })
   );
-  await act(async () => container.querySelector('[aria-label="Turn on camera"]').click());
+  const button = container.querySelector('[aria-label="Turn on camera"]');
+  const buttonClass = button.className;
+  await act(async () => button.click());
+  expect(container.querySelector('[aria-label="Turn on camera"]')).toBe(button);
+  expect(button.disabled).toBe(true);
+  expect(button.className).toBe(buttonClass);
   act(() => root.render(null));
   RtcClient.engine = { publishStream: vi.fn(), stopVideoCapture: vi.fn() };
   await act(async () => complete());

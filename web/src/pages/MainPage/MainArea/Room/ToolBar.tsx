@@ -239,19 +239,21 @@ function ToolBar(props: React.HTMLAttributes<HTMLDivElement>) {
             cameraBlocked ? 'Camera is unavailable while web search or MCP is enabled.' : undefined
           }
         >
-          <button
-            type="button"
-            className={style.controlButton}
-            disabled={screenLoading || cameraBlocked}
-            aria-label={cameraPublished ? 'Turn off camera' : 'Turn on camera'}
-            onClick={toggleCamera}
-          >
-            <img
-              src={cameraPublished ? CameraOpenSVG : CameraCloseSVG}
-              className={style.btn}
-              alt=""
-            />
-          </button>
+          <span className={style.cameraTrigger}>
+            <button
+              type="button"
+              className={style.controlButton}
+              disabled={screenLoading || cameraBlocked}
+              aria-label={cameraPublished ? 'Turn off camera' : 'Turn on camera'}
+              onClick={toggleCamera}
+            >
+              <img
+                src={cameraPublished ? CameraOpenSVG : CameraCloseSVG}
+                className={style.btn}
+                alt=""
+              />
+            </button>
+          </span>
         </Tooltip>
       )}
       {canShareScreen && !utils.isMobile() && (
