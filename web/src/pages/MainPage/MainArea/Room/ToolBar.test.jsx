@@ -78,6 +78,23 @@ test('screen sharing releases the published stream when stopped', async () => {
   expect(container.querySelector('[aria-label="Share screen"]')).not.toBeNull();
 });
 
+test('screen reader keeps its conversation when sharing starts, stops or ends in the browser', async () => {
+  act(() => {
+    store.dispatch(updateAIConfig(getSceneSettings(SCENE.SCREEN_READER)));
+    store.dispatch(updateScene(SCENE.SCREEN_READER));
+  });
+  RtcClient.audioBotEnabled = true;
+  const click = (label) => act(async () => container.querySelector(`[aria-label="${label}"]`).click());
+  await click('Share screen');
+  await click('Stop sharing screen');
+  await click('Share screen');
+  const [, onEnded] = RtcClient.engine.on.mock.calls.at(-1);
+  await act(async () => onEnded({ kind: 'video', isScreen: true }));
+  expect(store.getState().room.localUser.publishScreen).toBe(false);
+  expect(store.getState().room.aiConfig.VisionSourceType).toBe(1);
+  expect(RtcClient.updateAgent).not.toHaveBeenCalled();
+});
+
 test('failed screen publication stops capture and permits another attempt', async () => {
   RtcClient.engine.publishScreen.mockRejectedValueOnce(new Error('Publication failed'));
   await act(async () => container.querySelector('[aria-label="Share screen"]').click());

@@ -35,6 +35,8 @@ function ToolBar(props: React.HTMLAttributes<HTMLDivElement>) {
   const { aiConfig, localUser, scene } = useSelector((state: RootState) => state.room);
   const dispatch = useDispatch();
   const screenPublished = Boolean(localUser.publishScreen);
+  const idleVisionSource =
+    scene === SCENE.SCREEN_READER ? StreamIndex.STREAM_INDEX_SCREEN : StreamIndex.STREAM_INDEX_MAIN;
   const cameraPublished = Boolean(localUser.publishVideo);
   const setScreenPublished = useCallback(
     (value: boolean) => dispatch(updateLocalUser({ publishScreen: value })),
@@ -66,13 +68,15 @@ function ToolBar(props: React.HTMLAttributes<HTMLDivElement>) {
       if (kind === 'video' && !isScreen) dispatch(updateLocalUser({ publishVideo: false }));
       if (kind === 'video' && isScreen) {
         setScreenPublished(false);
-        dispatch(updateAIConfig({ VisionSourceType: StreamIndex.STREAM_INDEX_MAIN }));
+        const sourceChanged = aiConfig.VisionSourceType !== idleVisionSource;
+        if (sourceChanged) dispatch(updateAIConfig({ VisionSourceType: idleVisionSource }));
         void engine
           .unpublishScreen(MediaType.VIDEO)
           .then(async () => {
             if (
               mountedRef.current &&
               RtcClient.engine === engine &&
+              sourceChanged &&
               canShareScreenRef.current &&
               RtcClient.audioBotEnabled
             )
@@ -86,7 +90,7 @@ function ToolBar(props: React.HTMLAttributes<HTMLDivElement>) {
       mountedRef.current = false;
       engine.off(BytePlusRTC.events.onTrackEnded, onEnded);
     };
-  }, [dispatch, setScreenPublished]);
+  }, [dispatch, setScreenPublished, idleVisionSource, aiConfig.VisionSourceType]);
   useEffect(() => {
     if (
       (!canShareScreen || aiConfig.VisionSourceType !== StreamIndex.STREAM_INDEX_SCREEN) &&
@@ -131,14 +135,11 @@ function ToolBar(props: React.HTMLAttributes<HTMLDivElement>) {
       }
       if (mountedRef.current && RtcClient.engine === engine) {
         setScreenPublished(!screenPublished);
-        dispatch(
-          updateAIConfig({
-            VisionSourceType: screenPublished
-              ? StreamIndex.STREAM_INDEX_MAIN
-              : StreamIndex.STREAM_INDEX_SCREEN,
-          })
-        );
-        if (RtcClient.audioBotEnabled) await RtcClient.updateAgent();
+        const source = screenPublished ? idleVisionSource : StreamIndex.STREAM_INDEX_SCREEN;
+        if (aiConfig.VisionSourceType !== source) {
+          dispatch(updateAIConfig({ VisionSourceType: source }));
+          if (RtcClient.audioBotEnabled) await RtcClient.updateAgent();
+        }
       }
     } catch (error) {
       await engine.unpublishScreen(MediaType.VIDEO).catch(() => {});
