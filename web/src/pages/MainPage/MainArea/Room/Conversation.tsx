@@ -4,7 +4,7 @@
  */
 
 import React, { useRef, useEffect } from 'react';
-import Markdown from 'react-markdown';
+import Markdown, { type Components, type ExtraProps } from 'react-markdown';
 import { useSelector } from 'react-redux';
 import { Tag, Spin } from '@arco-design/web-react';
 import { RootState } from '@/store';
@@ -17,23 +17,38 @@ import USER_AVATAR from '@/assets/img/UserAvatar.png';
 import { Icon, Name } from '@/config/scene';
 import styles from './index.module.less';
 
-function SubtitleParagraph({ children }: React.PropsWithChildren) {
+const SubtitleSource = React.createContext('');
+
+function SubtitleParagraph({ children, node }: React.PropsWithChildren<ExtraProps>) {
+  const source = React.useContext(SubtitleSource);
   return (
     <p>
-      {React.Children.map(children, (child) =>
-        typeof child === 'string'
-          ? child.replace(/(^|[^#\\])[ \t]*#{2,6}[ \t]+(?=\S|$)/g, '$1\n')
-          : child
-      )}
+      {React.Children.map(children, (child, index) => {
+        const position = node?.children[index]?.position;
+        if (typeof child !== 'string' || !position || !child.includes('##')) return child;
+        const literal = source.slice(position.start.offset, position.end.offset);
+        if (literal !== child) return child;
+        return child.replace(/(^|[^#\\])[ \t]*#{2,6}[ \t]+(?=\S|$)/g, '$1\n');
+      })}
     </p>
   );
 }
 
+const subtitleComponents: Components = {
+  p: SubtitleParagraph,
+  a: ({ children, href, title }) => (
+    <a href={href} title={title} target="_blank" rel="noopener noreferrer">
+      {children}
+    </a>
+  ),
+  img: ({ alt }) => alt,
+};
+
 const ReplyMarkdown = React.memo(function ReplyMarkdown({ text }: { text: string }) {
   return (
-    <Markdown skipHtml components={{ p: SubtitleParagraph, img: ({ alt }) => alt }}>
-      {text}
-    </Markdown>
+    <SubtitleSource.Provider value={text}>
+      <Markdown components={subtitleComponents}>{text}</Markdown>
+    </SubtitleSource.Provider>
   );
 });
 

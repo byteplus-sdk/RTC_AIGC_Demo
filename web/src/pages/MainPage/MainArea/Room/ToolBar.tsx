@@ -6,7 +6,7 @@
 import BytePlusRTC, { MediaType, StreamIndex } from '@byteplus/rtc';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Drawer, Message, Tooltip } from '@arco-design/web-react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch, useSelector, useStore } from 'react-redux';
 import { useDeviceState, useLeave } from '@/lib/useCommon';
 import utils from '@/utils/utils';
 import Menu from '../../Menu';
@@ -34,6 +34,7 @@ function ToolBar(props: React.HTMLAttributes<HTMLDivElement>) {
   const leaveRoom = useLeave();
   const { aiConfig, localUser, scene } = useSelector((state: RootState) => state.room);
   const dispatch = useDispatch();
+  const store = useStore<RootState>();
   const screenPublished = Boolean(localUser.publishScreen);
   const idleVisionSource =
     scene === SCENE.SCREEN_READER ? StreamIndex.STREAM_INDEX_SCREEN : StreamIndex.STREAM_INDEX_MAIN;
@@ -60,6 +61,24 @@ function ToolBar(props: React.HTMLAttributes<HTMLDivElement>) {
   canShareScreenRef.current = canShareScreen;
   const cameraBlockedRef = useRef(cameraBlocked);
   cameraBlockedRef.current = cameraBlocked;
+  const setVisionSource = useCallback(async (source: StreamIndex, engine: typeof RtcClient.engine) => {
+    const { aiConfig: current, isAIGCEnable } = store.getState().room;
+    const previous = current.VisionSourceType;
+    const needsRestart = isAIGCEnable && !RtcClient.audioBotEnabled;
+    if (previous === source && !needsRestart) return;
+    dispatch(updateAIConfig({ VisionSourceType: source }));
+    try {
+      if (needsRestart) await RtcClient.updateAgent({ preflight: true, agentExpected: true });
+      else if (RtcClient.audioBotEnabled) await RtcClient.updateAgent();
+    } catch (error) {
+      if (
+        mountedRef.current &&
+        RtcClient.engine === engine &&
+        store.getState().room.aiConfig.VisionSourceType === source
+      ) dispatch(updateAIConfig({ VisionSourceType: previous }));
+      throw error;
+    }
+  }, [dispatch, store]);
   useEffect(() => {
     const engine = RtcClient.engine;
     mountedRef.current = true;
@@ -68,19 +87,11 @@ function ToolBar(props: React.HTMLAttributes<HTMLDivElement>) {
       if (kind === 'video' && !isScreen) dispatch(updateLocalUser({ publishVideo: false }));
       if (kind === 'video' && isScreen) {
         setScreenPublished(false);
-        const sourceChanged = aiConfig.VisionSourceType !== idleVisionSource;
-        if (sourceChanged) dispatch(updateAIConfig({ VisionSourceType: idleVisionSource }));
         void engine
           .unpublishScreen(MediaType.VIDEO)
           .then(async () => {
-            if (
-              mountedRef.current &&
-              RtcClient.engine === engine &&
-              sourceChanged &&
-              canShareScreenRef.current &&
-              RtcClient.audioBotEnabled
-            )
-              await RtcClient.updateAgent();
+            if (mountedRef.current && RtcClient.engine === engine && canShareScreenRef.current)
+              await setVisionSource(idleVisionSource, engine);
           })
           .catch((error) => Message.error((error as Error).message));
       }
@@ -90,12 +101,12 @@ function ToolBar(props: React.HTMLAttributes<HTMLDivElement>) {
       mountedRef.current = false;
       engine.off(BytePlusRTC.events.onTrackEnded, onEnded);
     };
-  }, [dispatch, setScreenPublished, idleVisionSource, aiConfig.VisionSourceType]);
+  }, [dispatch, setScreenPublished, idleVisionSource, setVisionSource]);
   useEffect(() => {
     if (
       (!canShareScreen || aiConfig.VisionSourceType !== StreamIndex.STREAM_INDEX_SCREEN) &&
       screenPublished &&
-      !mediaBusy.current
+      !screenLoading
     ) {
       const engine = RtcClient.engine;
       void engine
@@ -108,7 +119,7 @@ function ToolBar(props: React.HTMLAttributes<HTMLDivElement>) {
         })
         .catch((error) => Message.error((error as Error).message));
     }
-  }, [canShareScreen, screenPublished, aiConfig.VisionSourceType, dispatch]);
+  }, [canShareScreen, screenPublished, aiConfig.VisionSourceType, screenLoading, dispatch]);
   const toggleScreen = async () => {
     if (mediaBusy.current) return;
     mediaBusy.current = true;
@@ -136,10 +147,7 @@ function ToolBar(props: React.HTMLAttributes<HTMLDivElement>) {
       if (mountedRef.current && RtcClient.engine === engine) {
         setScreenPublished(!screenPublished);
         const source = screenPublished ? idleVisionSource : StreamIndex.STREAM_INDEX_SCREEN;
-        if (aiConfig.VisionSourceType !== source) {
-          dispatch(updateAIConfig({ VisionSourceType: source }));
-          if (RtcClient.audioBotEnabled) await RtcClient.updateAgent();
-        }
+        await setVisionSource(source, engine);
       }
     } catch (error) {
       await engine.unpublishScreen(MediaType.VIDEO).catch(() => {});
@@ -179,14 +187,7 @@ function ToolBar(props: React.HTMLAttributes<HTMLDivElement>) {
       }
       if (mountedRef.current && RtcClient.engine === engine) {
         dispatch(updateLocalUser({ publishVideo: !cameraPublished }));
-        dispatch(updateAIConfig({ VisionSourceType: StreamIndex.STREAM_INDEX_MAIN }));
-        if (
-          supportsVision &&
-          aiConfig.VisionSourceType !== StreamIndex.STREAM_INDEX_MAIN &&
-          RtcClient.audioBotEnabled
-        ) {
-          await RtcClient.updateAgent();
-        }
+        if (supportsVision) await setVisionSource(StreamIndex.STREAM_INDEX_MAIN, engine);
       }
     } catch (error) {
       await engine.unpublishStream(MediaType.VIDEO).catch(() => {});
@@ -204,7 +205,7 @@ function ToolBar(props: React.HTMLAttributes<HTMLDivElement>) {
     if (
       (cameraBlocked || aiConfig.VisionSourceType !== StreamIndex.STREAM_INDEX_MAIN) &&
       cameraPublished &&
-      !mediaBusy.current
+      !screenLoading
     ) {
       const engine = RtcClient.engine;
       void engine
@@ -216,7 +217,7 @@ function ToolBar(props: React.HTMLAttributes<HTMLDivElement>) {
         })
         .catch((error) => Message.error((error as Error).message));
     }
-  }, [cameraBlocked, cameraPublished, aiConfig.VisionSourceType, dispatch]);
+  }, [cameraBlocked, cameraPublished, aiConfig.VisionSourceType, screenLoading, dispatch]);
   const { isAudioPublished, switchMic } = useDeviceState();
   const handleSetting = () => {
     setOpen(true);

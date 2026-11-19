@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import config from '@/config';
-import roomReducer, { updateAIConfig, updateLocalUser, updateScene } from '@/store/slices/room';
+import roomReducer, { updateAIGCState, updateAIConfig, updateLocalUser, updateScene } from '@/store/slices/room';
 import { ModelNames } from '@/config/voiceChat/llm';
 import { getSceneSettings, SCENE } from '@/config/scene';
 import RtcClient from '@/lib/RtcClient';
@@ -93,6 +93,39 @@ test('screen reader keeps its conversation when sharing starts, stops or ends in
   expect(store.getState().room.localUser.publishScreen).toBe(false);
   expect(store.getState().room.aiConfig.VisionSourceType).toBe(1);
   expect(RtcClient.updateAgent).not.toHaveBeenCalled();
+});
+
+test.each([true, false])('screen sharing retries a failed source update with agent running: %s', async (running) => {
+  act(() => store.dispatch(updateAIGCState({ isAIGCEnable: true })));
+  RtcClient.audioBotEnabled = true;
+  RtcClient.updateAgent.mockImplementationOnce(async () => {
+    RtcClient.audioBotEnabled = running;
+    throw new Error('Source update failed');
+  });
+  const share = () => act(async () => container.querySelector('[aria-label="Share screen"]').click());
+  await share();
+  expect(store.getState().room.aiConfig.VisionSourceType).toBe(0);
+  expect(store.getState().room.localUser.publishScreen).toBe(false);
+  await share();
+  expect(RtcClient.updateAgent).toHaveBeenCalledTimes(2);
+  if (!running) {
+    expect(RtcClient.updateAgent).toHaveBeenLastCalledWith({ preflight: true, agentExpected: true });
+  }
+  expect(store.getState().room.aiConfig.VisionSourceType).toBe(1);
+  expect(store.getState().room.localUser.publishScreen).toBe(true);
+});
+
+test('camera is released when vision becomes unavailable during a source update', async () => {
+  await act(async () => container.querySelector('[aria-label="Share screen"]').click());
+  RtcClient.audioBotEnabled = true;
+  let finishUpdate;
+  RtcClient.updateAgent.mockImplementationOnce(() => new Promise((resolve) => { finishUpdate = resolve; }));
+  await act(async () => container.querySelector('[aria-label="Turn on camera"]').click());
+  expect(store.getState().room.localUser.publishVideo).toBe(true);
+  act(() => store.dispatch(updateAIConfig({ Model: ModelNames.Custom })));
+  await act(async () => finishUpdate());
+  expect(RtcClient.engine.stopVideoCapture).toHaveBeenCalledTimes(1);
+  expect(store.getState().room.localUser.publishVideo).toBe(false);
 });
 
 test('failed screen publication stops capture and permits another attempt', async () => {

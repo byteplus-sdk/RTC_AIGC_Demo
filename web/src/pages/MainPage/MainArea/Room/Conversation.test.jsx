@@ -62,6 +62,28 @@ test('flattened headings start new lines in streaming AI subtitles', () => {
   }
 });
 
+test('reply markup preserves literal examples and opens references in another tab', () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  const previous = getConfigSnapshot();
+  const store = configureStore({ reducer: { room: roomReducer } });
+  const node = document.createElement('div');
+  const root = createRoot(node);
+  try {
+    store.dispatch(updateAIConfig({ 'Provider.TTS': Provider.Byteplus }));
+    const text = 'Use <button>, type \\### literally, or read [setup](https://example.com/setup).';
+    store.dispatch(setHistoryMsg({ user: config.BotName, text, paragraph: true }));
+    act(() => root.render(<ReduxProvider store={store}><Conversation /></ReduxProvider>));
+    const paragraph = node.querySelector('p');
+    expect(paragraph.textContent).toBe('Use <button>, type ### literally, or read setup.');
+    expect(paragraph.querySelector('button')).toBeNull();
+    expect(paragraph.querySelector('a')?.target).toBe('_blank');
+    expect(paragraph.querySelector('a')?.rel).toContain('noopener');
+  } finally {
+    act(() => root.unmount());
+    Object.assign(config, previous);
+  }
+});
+
 test.each([true, false])('welcome subtitle loading follows paragraph completion: %s', (paragraph) => {
   global.IS_REACT_ACT_ENVIRONMENT = true;
   const previous = getConfigSnapshot();
