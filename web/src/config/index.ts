@@ -104,8 +104,8 @@ export enum PROMPT {
 }
 
 export const ModeOptions = {
-  [CALL_TYPE.VOICE_CHAT]: 'Flexible combination',
-  [CALL_TYPE.REAL_TIME]: "OpenAI's Realtime API",
+  [CALL_TYPE.VOICE_CHAT]: 'Cascading Solution',
+  [CALL_TYPE.REAL_TIME]: 'End to End Solution',
 };
 
 export const VendorName = {

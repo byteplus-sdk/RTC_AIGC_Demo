@@ -22,6 +22,7 @@ import BytePlusRTC, {
 import { Message } from '@arco-design/web-react';
 import RTCAIAnsExtension from '@byteplus/rtc/extension-ainr';
 import openAPIs from '@/app/index';
+import { CALL_TYPE, getCallMode } from '@/app/base';
 import { checkCallConfiguration } from '@/app/preflight';
 import aigc from '@/config';
 import Utils from '@/utils/utils';
@@ -339,10 +340,11 @@ export class RtcClient {
     if (this.audioBotEnabled) {
       await this.stopAgent();
     }
+    const mode = getCallMode();
     await openAPIs.StartVoiceChat(aigc.config);
     this.audioBotEnabled = true;
     this.audioBotStartTime = Date.now();
-    Utils.setSessionInfo({ audioBotEnabled: 'enable' });
+    Utils.setSessionInfo({ audioBotEnabled: mode });
   };
 
   /**
@@ -351,12 +353,13 @@ export class RtcClient {
   stopAgent = async () => {
     const roomId = this.basicInfo.room_id;
     const userId = this.basicInfo.user_id;
-    if (this.audioBotEnabled || sessionStorage.getItem('audioBotEnabled')) {
+    const mode = sessionStorage.getItem('audioBotEnabled');
+    if (this.audioBotEnabled || mode) {
       await openAPIs.StopVoiceChat({
         AppId: aigc.AppId,
         RoomId: roomId,
         TaskId: userId,
-      });
+      }, mode === CALL_TYPE.REAL_TIME || mode === CALL_TYPE.VOICE_CHAT ? mode : getCallMode());
       this.audioBotStartTime = 0;
       sessionStorage.removeItem('audioBotEnabled');
     }

@@ -14,6 +14,7 @@ import RtcClient from '@/lib/RtcClient';
 import {
   clearHistoryMsg,
   localJoinRoom,
+  setJoining,
   localLeaveRoom,
   updateAIGCState,
   updateFullScreen,
@@ -63,7 +64,6 @@ export const useJoin = (): [
 
   const dispatch = useDispatch();
 
-  const [joining, setJoining] = useState(false);
   const joiningRef = useRef(false);
   const listeners = useRtcListeners();
 
@@ -82,7 +82,7 @@ export const useJoin = (): [
 
     if (joiningRef.current) return;
     joiningRef.current = true;
-    setJoining(true);
+    dispatch(setJoining(true));
     let engineCreated = false;
     try {
       const isSupported = await BytePlusRTC.isSupported();
@@ -207,11 +207,11 @@ export const useJoin = (): [
       return false;
     } finally {
       joiningRef.current = false;
-      setJoining(false);
+      dispatch(setJoining(false));
     }
   }
 
-  return [joining, disPatchJoin];
+  return [room.isJoining, disPatchJoin];
 };
 
 export const useLeave = () => {

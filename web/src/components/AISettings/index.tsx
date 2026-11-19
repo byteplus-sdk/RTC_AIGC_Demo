@@ -3,7 +3,7 @@
  * SPDX-license-identifier: BSD-3-Clause
  */
 
-import { Button, Drawer, Input, Message, Radio, Tag } from '@arco-design/web-react';
+import { Button, Drawer, Input, Message, Radio } from '@arco-design/web-react';
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import isEqual from 'lodash/isEqual';
@@ -18,6 +18,7 @@ import {
   updateIsShowSubtitle,
   updateAIConfig,
   updateScene,
+  updateCallMode,
 } from '@/store/slices/room';
 import { RootState } from '@/store';
 import CheckIcon from '../CheckIcon';
@@ -36,7 +37,8 @@ import { ConfigFactory } from '@/config/config';
 import CheckBoxSelector from '../CheckBoxSelector';
 import TitleCard from '../TitleCard';
 import utils from '@/utils/utils';
-import { isRealTimeCallMode } from '@/app/base';
+import SolutionRadio from '../SolutionRadio';
+import { CALL_TYPE, isRealTimeCallMode, setCallMode } from '@/app/base';
 import {
   AMAZON_VOICE_TYPE,
   BYTE_PLUS_VOICE_TYPE,
@@ -248,7 +250,19 @@ function AISettings() {
     });
   };
 
+  const [initialMode, setInitialMode] = useState(room.callMode);
+  const selectMode = (mode: CALL_TYPE) => {
+    setCallMode(mode);
+    dispatch(updateCallMode({ callMode: mode }));
+    setData(getSettings());
+    setJsonError(undefined);
+  };
+  const cancel = () => {
+    if (room.callMode !== initialMode) selectMode(initialMode);
+    setOpen(false);
+  };
   const handleClick = () => {
+    setInitialMode(room.callMode);
     setOpen(true);
   };
 
@@ -351,7 +365,7 @@ function AISettings() {
         footer={
           <div className={styles.footer}>
             <div className={styles.suffix}>Apply changes to restart the current conversation.</div>
-            <Button loading={loading} className={styles.cancel} onClick={() => setOpen(false)}>
+            <Button loading={loading} className={styles.cancel} onClick={cancel}>
               Cancel
             </Button>
             <Button loading={loading} className={styles.confirm} onClick={handleUpdateConfig}>
@@ -360,11 +374,11 @@ function AISettings() {
           </div>
         }
         visible={open}
-        onCancel={() => setOpen(false)}
+        onCancel={cancel}
       >
         <div className={styles.title}>
           Choose Your <span className={styles['special-text']}>AI Character</span> for
-          <Tag color="arcoblue">{isRealTimeCallMode() ? 'End-to-end' : 'Cascading solution'}</Tag>
+          <SolutionRadio value={room.callMode} disabled={room.isJoined || room.isJoining} onChange={selectMode} />
         </div>
         {!isRealTimeCallMode() && (
           <Radio.Group

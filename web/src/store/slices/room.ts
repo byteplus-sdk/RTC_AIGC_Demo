@@ -10,7 +10,7 @@ import {
   NetworkQuality,
   RemoteAudioStats,
 } from '@byteplus/rtc';
-import { CALL_TYPE } from '@/app/base';
+import { CALL_TYPE, getCallMode } from '@/app/base';
 import { getConfigSnapshot } from '@/config/settings';
 import config from '@/config';
 import { SCENE } from '@/config/scene';
@@ -53,6 +53,7 @@ export interface RoomState {
    * @brief Whether the user has joined the room.
    */
   isJoined: boolean;
+  isJoining: boolean;
   /**
    * @brief The selected mode.
    */
@@ -110,7 +111,7 @@ const initialState: RoomState = {
   isShowSubtitle: true,
   isAINREnable: true,
   time: -1,
-  callMode: CALL_TYPE.VOICE_CHAT,
+  callMode: getCallMode(),
   remoteUsers: [],
   localUser: {
     publishAudio: true,
@@ -118,6 +119,7 @@ const initialState: RoomState = {
   },
   autoPlayFailUser: [],
   isJoined: false,
+  isJoining: false,
   isAIGCEnable: false,
   isAITalking: false,
   isUserTalking: false,
@@ -181,8 +183,12 @@ export const roomSlice = createSlice({
       state.remoteUsers.splice(findIndex, 1);
     },
 
+    setJoining: (state, { payload }: { payload: boolean }) => {
+      state.isJoining = payload;
+    },
     updateCallMode: (state, { payload }) => {
       state.callMode = payload.callMode;
+      state.aiConfig = getConfigSnapshot();
     },
 
     updateLocalUser: (state, { payload }: { payload: Partial<LocalUser> }) => {
@@ -331,6 +337,7 @@ export const {
   updateAIConfig,
   updateNetworkQuality,
   updateCallMode,
+  setJoining,
   clearHistoryMsg,
   addHistoryMsg,
   setHistoryMsg,

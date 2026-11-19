@@ -6,96 +6,24 @@
 const Koa = require('koa');
 const bodyParser = require('koa-bodyparser');
 const cors = require('koa2-cors');
-const { signQuery } = require('./signing');
-const fetch = require('node-fetch');
-const { getLlmCredentialField, getLlmApiKey, validateGatewayConfig } = require('./providerConfig');
-const { createAgentLifecycle } = require('./agentLifecycle');
-const { preflight } = require('./preflight');
-const { loadConfig, required } = require('./config');
 if (require.main === module) {
   require('dotenv').config({ path: process.env.DEMO_ENV_FILE || require('path').resolve(__dirname, '../.env.local') });
 }
-const { injectSensitiveInfo } = require('./sensitive');
-const { isVoiceChatMode, generateRtcAccessToken } = require('./util');
 
+const { createManualRuntime } = require('./manualRuntime');
+const { createAgentLifecycle } = require('./agentLifecycle');
+const { loadConfig } = require('./config');
 const AGENT_ACTIONS = new Set([
   'StartVoiceChat', 'StopVoiceChat',
   'StartVoiceChatWithRealtimeAPI', 'StopVoiceChatWithRealtimeAPI',
 ]);
 
-function validateProviderConfig(action, body, env) {
-  if (!action.startsWith('Start')) return;
-  const fields = [];
-  const speech = ['BYTEPLUS_SEED_SPEECH_APP_ID', 'BYTEPLUS_SEED_SPEECH_ACCESS_TOKEN'];
-  const amazon = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY'];
-  const google = ['GOOGLE_CREDENTIALS_JSON'];
-  if (isVoiceChatMode(action)) {
-    const config = body?.Config;
-    for (const kind of ['ASR', 'TTS']) {
-      validateGatewayConfig(body, kind, env);
-    }
-    fields.push(...({
-      BytePlus: speech, Amazon: amazon, amazon, google, Google: google,
-      GoogleV2: [...google, 'GOOGLE_RECOGNIZER_PATH'],
-    }[config?.ASRConfig?.Provider] || []));
-    fields.push(...({
-      BytePlus: speech, byteplus_Bidirectional_streaming: speech, Amazon: amazon, amazon, Google: google,
-      OpenAI: ['OPENAI_API_KEY'], openai: ['OPENAI_API_KEY'],
-    }[config?.TTSConfig?.Provider] || []));
-    if (config?.LLMConfig) {
-      const field = getLlmCredentialField(config.LLMConfig);
-      required(getLlmApiKey(config.LLMConfig, env), field === 'CUSTOM_LLM_API_KEY' ? 'CUSTOM_LLM_API_KEY or OPENAI_API_KEY' : field);
-    }
-    if (config?.WebSearchAgentConfig?.Enable === true) {
-      fields.push('ASKECHO_API_KEY');
-      required(env.ASKECHO_API_KEY, 'ASKECHO_API_KEY');
-      const params = JSON.parse(config.WebSearchAgentConfig.ParamsString || '{}');
-      required(env.ASKECHO_BOT_ID || params.bot_id, 'ASKECHO_BOT_ID');
-      const name = config.WebSearchAgentConfig.FunctionName || 'WebSearch';
-      if (config.LLMConfig?.MCP?.some((item) => item.Name === name)) {
-        throw new Error(`MCP name conflicts with web search: ${name}`);
-      }
-    }
-  } else {
-    fields.push('OPENAI_API_KEY');
-  }
-  const avatar = isVoiceChatMode(action) ? body?.Config?.AvatarConfig : body?.AvatarConfig;
-  if (avatar?.Enabled) {
-    fields.push(...(avatar.Provider === 'Akool' ? ['AKOOL_API_KEY'] : ['AVATAR_APP_ID', 'AVATAR_TOKEN']));
-  }
-  for (const field of new Set(fields)) required(env[field], field);
-}
-
-function createApp({ fetchImpl = fetch, env = process.env, probeSpeech } = {}) {
+function createApp({ fetchImpl, env = process.env, probeSpeech } = {}) {
   const config = loadConfig(env);
   const app = new Koa();
   const controller = new AbortController();
-  const lifecycle = createAgentLifecycle(async (action, body) => {
-    const openApiRequestDataRTC = {
-      region: 'ap-southeast-1',
-      method: 'POST',
-      params: {
-        Action: action,
-        Version: '2025-05-01',
-      },
-      headers: {
-        Host: 'rtc.ap-southeast-1.byteplusapi.com',
-        'Content-Type': 'application/json',
-      },
-    };
-    const rtcSignedUri = `https://rtc.ap-southeast-1.byteplusapi.com?${signQuery(openApiRequestDataRTC, 'rtc', config.credential)}`;
-
-    /** Refer to https://docs.byteplus.com/en/docs/byteplus-rtc/docs-69828 to get more information. */
-    const result = await fetchImpl(rtcSignedUri, {
-      method: 'POST',
-      headers: openApiRequestDataRTC.headers,
-      body: JSON.stringify(body),
-      timeout: 5000,
-      signal: controller.signal,
-    });
-    if (result.ok === false) throw new Error(`RTC OpenAPI returned HTTP ${result.status}`);
-    return result.json();
-  });
+  const runtime = createManualRuntime(config, { env, fetchImpl, probeSpeech, signal: controller.signal });
+  const lifecycle = createAgentLifecycle(runtime.invoke);
   app.stopActiveAgents = lifecycle.stop;
   app.abortAgentRequests = () => controller.abort();
 
@@ -130,7 +58,7 @@ function createApp({ fetchImpl = fetch, env = process.env, probeSpeech } = {}) {
     if (ctx.method === 'POST' && ctx.path === '/preflight') {
       const action = ctx.request.query.action;
       if (!AGENT_ACTIONS.has(action) || !action.startsWith('Start')) ctx.throw(400, 'unsupported preflight action');
-      ctx.body = await preflight(action, ctx.request.body, env, { validate: validateProviderConfig, probe: probeSpeech });
+      ctx.body = await runtime.check(action, ctx.request.body);
       return;
     }
     if (ctx.method === 'GET' && ctx.path === '/runtimeConfig') {
@@ -146,17 +74,7 @@ function createApp({ fetchImpl = fetch, env = process.env, probeSpeech } = {}) {
       const action = ctx.request.query.action;
 
       if (!AGENT_ACTIONS.has(action)) ctx.throw(400, `unsupported action ${action}`);
-      validateProviderConfig(action, body, env);
-
-      /**
-       * @brief If OpenAPI invoked in the client like website, advised to generate session token for security.
-       *        OpenAPI invoked in server side in this example, not necessary to generate session token.
-       */
-      // await getSessionToken();
-
-      /** Injecting the sensitive info to request body */
-      injectSensitiveInfo(body, isVoiceChatMode(action), { action, env });
-
+      runtime.prepare(action, body);
       ctx.body = await lifecycle.request(action, body);
       return;
     }
@@ -174,7 +92,7 @@ function createApp({ fetchImpl = fetch, env = process.env, probeSpeech } = {}) {
         ctx.throw(400, 'appID, roomID and userID are required');
       }
       if (appID !== config.appId) ctx.throw(400, 'appID does not match RTC_APP_ID');
-      const accessToken = generateRtcAccessToken({ appID, appKey: config.appKey, roomID, userID });
+      const accessToken = await runtime.issueToken({ appID, roomID, userID });
       ctx.body = {
         ResponseMetadata,
         Result: {
@@ -235,4 +153,4 @@ if (require.main === module) {
   startServer();
 }
 
-module.exports = { createApp, loadConfig, startServer, validateProviderConfig };
+module.exports = { createApp, loadConfig, startServer };
