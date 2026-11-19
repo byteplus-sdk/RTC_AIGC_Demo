@@ -13,51 +13,47 @@ const env = {
   RTC_APP_ID: 'test-app', RTC_APP_KEY: 'test-app-key', BYTEPLUS_ACCESS_KEY_ID: 'test-ak', BYTEPLUS_SECRET_ACCESS_KEY: 'test-sk',
 };
 
-test('startup reports all missing Realtime settings without disclosing values', () => {
-  const issues = startupIssues({ BYTEPLUS_ACCESS_KEY_ID: 'private-value', PORT: '-1' }, 'all', 'realtime');
+test('startup reports all missing shared settings without disclosing values', () => {
+  const issues = startupIssues({ BYTEPLUS_ACCESS_KEY_ID: 'private-value', PORT: '-1' }, 'all');
   const text = issues.join('\n');
-  for (const field of ['RTC_APP_ID', 'RTC_APP_KEY', 'BYTEPLUS_SECRET_ACCESS_KEY', 'OPENAI_API_KEY', 'PORT']) assert.match(text, new RegExp(field));
+  for (const field of ['RTC_APP_ID', 'RTC_APP_KEY', 'BYTEPLUS_SECRET_ACCESS_KEY', 'PORT']) assert.match(text, new RegExp(field));
   assert.equal(text.includes('private-value'), false);
-  assert.equal(startupIssues({ ...env, OPENAI_API_KEY: 'private' }, 'all', 'realtime').length, 0);
 });
 
-test('Flexible defers selected provider credentials to the existing preflight', () => {
-  assert.deepEqual(startupIssues(env, 'all', 'flexible'), []);
+test('startup defers provider credentials to preflight', () => {
+  assert.deepEqual(startupIssues(env, 'all'), []);
 });
 
 test('server-only startup checks common credentials independently of conversation mode', () => {
-  assert.deepEqual(startupIssues(env, 'server', 'realtime'), []);
-  assert.match(startupIssues({ ...env, RTC_APP_KEY: '' }, 'server', 'realtime').join('\n'), /RTC_APP_KEY/);
+  assert.deepEqual(startupIssues(env, 'server'), []);
+  assert.match(startupIssues({ ...env, RTC_APP_KEY: '' }, 'server').join('\n'), /RTC_APP_KEY/);
 });
 
 test('web-only startup accepts an independently configured server', () => {
-  assert.deepEqual(startupIssues({}, 'web', 'realtime'), []);
-  assert.match(startupIssues({ SERVER_PORT: 'bad' }, 'web', 'flexible').join('\n'), /SERVER_PORT/);
+  assert.deepEqual(startupIssues({}, 'web'), []);
+  assert.match(startupIssues({ SERVER_PORT: 'bad' }, 'web').join('\n'), /SERVER_PORT/);
 });
 
 test('malformed browser configuration is reported before spawning', () => {
-  const issues = startupIssues({ ...env, BYTEPLUS_MODEL_ENDPOINTS: '[]', SESSION_DURATION_SECONDS: '0', REACT_APP_AIGC_PROXY_HOST: 'javascript:alert(1)' }, 'all', 'flexible');
+  const issues = startupIssues({ ...env, BYTEPLUS_MODEL_ENDPOINTS: '[]', SESSION_DURATION_SECONDS: '0', REACT_APP_AIGC_PROXY_HOST: 'javascript:alert(1)' }, 'all');
   assert.equal(issues.length, 3);
 });
 
-for (const mode of ['realtime', 'flexible']) {
-  test(`${mode} exposes public configuration and excludes credentials`, () => {
-    const result = webEnvironment({
-      ...env, RTC_APP_KEY: 'private', BYTEPLUS_MODEL_ENDPOINT_ID: 'endpoint',
-      OPENAI_API_KEY: 'private', AWS_SECRET_ACCESS_KEY: 'private', GOOGLE_CREDENTIALS_JSON: 'private',
-      AVATAR_TOKEN: 'private', AKOOL_API_KEY: 'private', CUSTOM_LLM_API_KEY: 'private', ASKECHO_API_KEY: 'private',
-      ASR_GATEWAY_API_URL: 'private', ASR_GATEWAY_API_KEY: 'private', TTS_GATEWAY_API_URL: 'private', TTS_GATEWAY_API_KEY: 'private',
-      SERVER_PORT: '3101',
-    }, mode, 3100);
-    assert.equal(result.REACT_APP_RTC_APP_ID, 'test-app');
-    assert.equal(result.REACT_APP_MODEL_ENDPOINT_ID, 'endpoint');
-    assert.equal(result.REACT_APP_MODE, mode);
-    assert.equal(result.PORT, '3100');
-    assert.equal(result.SERVER_PORT, '3101');
-    assert.equal(Object.values(result).includes('private'), false);
-    assert.equal(result.BYTEPLUS_ACCESS_KEY_ID, undefined);
-  });
-}
+test('web exposes public configuration and excludes credentials', () => {
+  const result = webEnvironment({
+    ...env, RTC_APP_KEY: 'private', BYTEPLUS_MODEL_ENDPOINT_ID: 'endpoint',
+    OPENAI_API_KEY: 'private', AWS_SECRET_ACCESS_KEY: 'private', GOOGLE_CREDENTIALS_JSON: 'private',
+    AVATAR_TOKEN: 'private', AKOOL_API_KEY: 'private', CUSTOM_LLM_API_KEY: 'private', ASKECHO_API_KEY: 'private',
+    ASR_GATEWAY_API_URL: 'private', ASR_GATEWAY_API_KEY: 'private', TTS_GATEWAY_API_URL: 'private', TTS_GATEWAY_API_KEY: 'private',
+    SERVER_PORT: '3101',
+  }, 3100);
+  assert.equal(result.REACT_APP_RTC_APP_ID, 'test-app');
+  assert.equal(result.REACT_APP_MODEL_ENDPOINT_ID, 'endpoint');
+  assert.equal(result.PORT, '3100');
+  assert.equal(result.SERVER_PORT, '3101');
+  assert.equal(Object.values(result).includes('private'), false);
+  assert.equal(result.BYTEPLUS_ACCESS_KEY_ID, undefined);
+});
 
 test('automatic port selection skips occupied ports and the API port', async () => {
   const checked = [];
@@ -88,14 +84,13 @@ test('port probe checks wildcard listeners before selecting a loopback port', as
 test('the launcher exits with a configuration summary before starting services', t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'rtc-demo-config-'));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
-  const result = spawnSync(process.execPath, [path.join(__dirname, 'dev.cjs'), 'realtime'], {
+  const result = spawnSync(process.execPath, [path.join(__dirname, 'dev.cjs')], {
     env: { PATH: process.env.PATH, DEMO_ENV_FILE: path.join(directory, 'missing.env') },
     encoding: 'utf8', timeout: 10000,
   });
   assert.equal(result.status, 1);
   assert.equal(result.stdout, '');
   assert.match(result.stderr, /RTC_APP_ID/);
-  assert.match(result.stderr, /OPENAI_API_KEY/);
   assert.match(result.stderr, /missing.env/);
   assert.doesNotMatch(result.stderr, /at main|node:internal/);
 });

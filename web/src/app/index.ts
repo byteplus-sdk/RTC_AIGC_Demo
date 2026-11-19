@@ -4,7 +4,7 @@
  */
 
 import { FlexibleAPIs, RealtimeAPIs, BasicAPIs } from './api';
-import { generateAPIs, isRealTimeCallMode } from './base';
+import { CALL_TYPE, generateAPIs, getCallMode, isRealTimeCallMode } from './base';
 
 /**
  * @brief Actions
@@ -25,10 +25,10 @@ export default {
       ? generateAPIs(RealtimeAPIs).StartVoiceChatWithRealtimeAPI(...params)
       : generateAPIs(FlexibleAPIs).StartVoiceChat(...params);
   },
-  [ACTIONS.StopVoiceChat]: (...params: unknown[]) => {
-    return isRealTimeCallMode()
-      ? generateAPIs(RealtimeAPIs).StopVoiceChatWithRealtimeAPI(...params)
-      : generateAPIs(FlexibleAPIs).StopVoiceChat(...params);
+  [ACTIONS.StopVoiceChat]: (params: unknown, mode = getCallMode()) => {
+    return mode === CALL_TYPE.REAL_TIME
+      ? generateAPIs(RealtimeAPIs).StopVoiceChatWithRealtimeAPI(params)
+      : generateAPIs(FlexibleAPIs).StopVoiceChat(params);
   },
   [ACTIONS.GenerateRtcAccessToken]: (...params: unknown[]) => {
     return generateAPIs(BasicAPIs).generateRtcAccessToken(...params);

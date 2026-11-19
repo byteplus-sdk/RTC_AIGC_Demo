@@ -1,8 +1,8 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const fetch = require('node-fetch');
-const { createApp, loadConfig, validateProviderConfig } = require('./app');
-const { VOICE_CHAT_MODE, REALTIME_API_MODE } = require('./sensitive');
+const { createApp, loadConfig } = require('./app');
+const { validateProviderConfig } = require('./providerConfig');
 
 const env = {
   RTC_APP_ID: 'test-app', RTC_APP_KEY: 'test-app-key',
@@ -59,12 +59,26 @@ for (const action of [
     assert.equal(res.status, 200);
     assert.deepEqual(await res.json(), response);
     if (flexible) {
-      assert.equal(forwarded.Config.LLMConfig.APIKey, VOICE_CHAT_MODE.LLMConfig.CustomLLM.APIKey);
+      assert.equal(forwarded.Config.LLMConfig.APIKey, env.OPENAI_API_KEY);
     } else {
-      assert.equal(forwarded.LLMConfig.Token, REALTIME_API_MODE.LLMConfig.Token);
+      assert.equal(forwarded.LLMConfig.Token, env.OPENAI_API_KEY);
     }
   });
 }
+
+test('missing provider credentials reject start before lifecycle cleanup', async (t) => {
+  const actions = [];
+  const base = await serve(t, { fetchImpl: async (url) => {
+    actions.push(new URL(url).searchParams.get('Action'));
+    return { json: async () => ({ Result: 'ok' }) };
+  } });
+  const res = await post(`${base}/proxyAIGCFetch?action=StartVoiceChat`, {
+    AppId: env.RTC_APP_ID, RoomId: 'room', TaskId: 'task',
+    Config: { LLMConfig: { Provider: 'BytePlus' } },
+  });
+  assert.match((await res.json()).Result, /BYTEPLUS_MODEL_API_KEY/);
+  assert.deepEqual(actions, []);
+});
 
 const gatewayEnv = {
   ...env,

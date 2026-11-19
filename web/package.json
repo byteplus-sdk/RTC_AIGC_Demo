@@ -18,8 +18,6 @@
   },
   "scripts": {
     "dev": "vite",
-    "dev:realtime": "vite --mode realtime",
-    "dev:flexible": "vite --mode flexible",
     "build": "vite build",
     "test": "vitest run",
     "prettier": "prettier --write '**/*.{js,jsx,tsx,ts,less,md,json}'",

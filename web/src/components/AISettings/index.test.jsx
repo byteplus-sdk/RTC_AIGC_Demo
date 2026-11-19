@@ -20,7 +20,7 @@ vi.mock('@arco-design/web-react', () => ({
   Drawer: ({ visible, children, footer }) => visible ? <div>{children}{footer}</div> : null,
   Message: { error: vi.fn() },
   Radio: { Group: () => null },
-  Tag: ({ children }) => <span>{children}</span>,
+  Popover: ({ children, content }) => <>{children}{content}</>,
   Input: Object.assign(() => null, {
     TextArea: ({ onChange, ...props }) => <textarea {...props} onInput={(event) => onChange(event.target.value)} />,
   }),
@@ -143,5 +143,32 @@ test('Apply uses only effective gateway settings and keeps applied settings afte
     RtcClient.audioBotEnabled = false;
     act(() => root.unmount());
     Object.assign(config, previous);
+  }
+});
+
+test('Configure cancels or applies the solution selected before a call', async () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  const container = document.createElement('div');
+  const root = createRoot(container);
+  const store = configureStore({ reducer: { room: roomReducer } });
+  const click = async (name) => act(async () =>
+    [...container.querySelectorAll('button')].find((button) => button.textContent.startsWith(name)).click());
+  try {
+    act(() => root.render(<ReduxProvider store={store}><AISettings /></ReduxProvider>));
+    await click('Configure');
+    await click('End to End Solution');
+    await click('Cancel');
+    expect(store.getState().room.callMode).toBe('voicechat');
+    await click('Configure');
+    await click('End to End Solution');
+    await click('Apply');
+    expect(store.getState().room.callMode).toBe('realtime');
+    expect(container.textContent).not.toContain('Choose Your');
+    act(() => store.dispatch(localJoinRoom({ roomId: 'room', user: { userId: 'user' } })));
+    await click('Configure');
+    expect(container.querySelector('button[aria-expanded]').disabled).toBe(true);
+  } finally {
+    act(() => root.unmount());
+    sessionStorage.removeItem('call_type');
   }
 });

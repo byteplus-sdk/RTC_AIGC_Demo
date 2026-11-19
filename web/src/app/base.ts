@@ -14,13 +14,14 @@ export enum CALL_TYPE {
   VOICE_CHAT = 'voicechat',
 }
 
-/**
- * @brief Judging the mode.
- */
-export const isRealTimeCallMode = () => {
-  /** See package.json, demo defined REACT_APP_MODE. */
-  return (import.meta.env.REACT_APP_MODE || import.meta.env.MODE) === CALL_TYPE.REAL_TIME;
+export const getCallMode = (): CALL_TYPE => {
+  const mode = sessionStorage.getItem('call_type') || import.meta.env.REACT_APP_MODE || import.meta.env.MODE;
+  return mode === CALL_TYPE.REAL_TIME ? CALL_TYPE.REAL_TIME : CALL_TYPE.VOICE_CHAT;
 };
+
+export const setCallMode = (mode: CALL_TYPE) => sessionStorage.setItem('call_type', mode);
+
+export const isRealTimeCallMode = () => getCallMode() === CALL_TYPE.REAL_TIME;
 
 export type DeepPartial<T> = {
   [P in keyof T]?: T[P] extends Array<infer U>

@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { validateProviderConfig } = require('./app');
-const { getLlmCredentialField, getLlmApiKey } = require('./providerConfig');
+const { injectSensitiveInfo } = require('./sensitive');
+const { validateProviderConfig, getLlmCredentialField, getLlmApiKey } = require('./providerConfig');
 
 const env = {
   BYTEPLUS_MODEL_API_KEY: 'test-ark', OPENAI_API_KEY: 'test-openai',
@@ -14,19 +14,7 @@ const env = {
 };
 
 function inject(body, flexible = true) {
-  const previous = Object.fromEntries(Object.keys(env).map((key) => [key, process.env[key]]));
-  Object.assign(process.env, env);
-  const modulePath = require.resolve('./sensitive');
-  const cached = require.cache[modulePath];
-  delete require.cache[modulePath];
-  try {
-    require('./sensitive').injectSensitiveInfo(body, flexible);
-  } finally {
-    for (const [key, value] of Object.entries(previous)) {
-      if (value === undefined) delete process.env[key]; else process.env[key] = value;
-    }
-    if (cached) require.cache[modulePath] = cached; else delete require.cache[modulePath];
-  }
+  injectSensitiveInfo(body, flexible, { env });
   return body;
 }
 

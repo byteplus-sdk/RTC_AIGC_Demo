@@ -15,11 +15,8 @@ function packageBin(requireFrom, name, command) {
   return requireFrom.resolve(path.resolve(path.dirname(manifest), typeof bin === 'string' ? bin : bin[command]));
 }
 
-function startupIssues(env, target, mode) {
+function startupIssues(env, target) {
   const issues = target === 'web' ? [] : configIssues(env);
-  if (target === 'all' && mode === 'realtime' && !env.OPENAI_API_KEY?.trim()) {
-    issues.push('OPENAI_API_KEY is required for Realtime');
-  }
   if (target !== 'server') {
     for (const key of ['PORT', 'SERVER_PORT']) {
       if (key === 'SERVER_PORT' && target !== 'web') continue;
@@ -49,7 +46,7 @@ function startupIssues(env, target, mode) {
   return [...new Set(issues)];
 }
 
-function webEnvironment(env, mode, port) {
+function webEnvironment(env, port) {
   const result = Object.fromEntries(Object.entries(env).filter(([key]) =>
     !/^(BYTEPLUS_|OPENAI_|AWS_|GOOGLE_|AVATAR_|AKOOL_|CUSTOM_LLM_|ASR_GATEWAY_|TTS_GATEWAY_)/.test(key) &&
     !['ASKECHO_API_KEY', 'RTC_APP_KEY', 'RTC_APP_ID'].includes(key)
@@ -61,7 +58,6 @@ function webEnvironment(env, mode, port) {
     REACT_APP_CUSTOM_LLM_URL: env.CUSTOM_LLM_URL || '',
     REACT_APP_MODEL_ENDPOINTS: env.BYTEPLUS_MODEL_ENDPOINTS || '{}',
     REACT_APP_SESSION_DURATION_SECONDS: env.SESSION_DURATION_SECONDS || '1800',
-    REACT_APP_MODE: mode,
     PORT: String(port),
     SERVER_PORT: env.SERVER_PORT || '3001',
     HOST: env.HOST?.trim() || '127.0.0.1',
@@ -143,11 +139,10 @@ function startChildren(specs, { spawnImpl = spawn, proc = process } = {}) {
 }
 
 async function main(args = process.argv.slice(2)) {
-  const target = ['server', 'web'].includes(args[0]) ? args[0] : 'all';
-  const mode = target === 'all' ? args[0] || 'realtime' : args[1] || 'realtime';
-  if (!['realtime', 'flexible'].includes(mode) || args.length > (target === 'all' ? 1 : 2)) {
-    throw new Error('Usage: node scripts/dev.cjs [flexible|realtime|web [flexible|realtime]|server]');
+  if (args.length > 1 || (args.length && !['web', 'server'].includes(args[0]))) {
+    throw new Error('Usage: node scripts/dev.cjs [web|server]');
   }
+  const target = args[0] || 'all';
   const envFile = path.resolve(process.env.DEMO_ENV_FILE || path.join(root, '.env.local'));
   let dotenv;
   try { dotenv = serverRequire('dotenv'); }
@@ -155,7 +150,7 @@ async function main(args = process.argv.slice(2)) {
   const loaded = dotenv.config({ path: envFile });
   if (loaded.error && loaded.error.code !== 'ENOENT') throw new Error(`Cannot read configuration file: ${envFile}`);
   const env = { ...process.env, DEMO_ENV_FILE: envFile };
-  const issues = startupIssues(env, target, mode);
+  const issues = startupIssues(env, target);
   if (issues.length) {
     throw new Error(`Configuration: ${envFile}\n${issues.map(issue => `  - ${issue}`).join('\n')}\nUse .env.example for field definitions.`);
   }
@@ -174,15 +169,13 @@ async function main(args = process.argv.slice(2)) {
   if (target !== 'server') {
     port = await selectWebPort(env);
     try {
-      specs.push({ name: 'web', args: [packageBin(webRequire, 'vite', 'vite'), '--clearScreen', 'false'], env: webEnvironment(env, mode, port) });
+      specs.push({ name: 'web', args: [packageBin(webRequire, 'vite', 'vite'), '--clearScreen', 'false'], env: webEnvironment(env, port) });
     } catch { throw new Error('Web dependencies are missing. Run npm run setup in the repository root.'); }
   }
-  console.log(`[dev] ${target === 'server' ? 'Starting API server' : `Mode: ${mode}`}`);
   console.log(`[dev] Configuration: ${envFile}${loaded.error ? ' (using environment variables)' : ''}`);
   if (port && !env.PORT?.trim() && port !== 3000) {
     console.log(`[web] Default port unavailable; selected ${port}.`);
   }
-  if (target !== 'server' && mode === 'flexible') console.log('[dev] Provider credentials are checked when you select ASR, LLM and TTS in the app.');
   startChildren(specs);
 }
 

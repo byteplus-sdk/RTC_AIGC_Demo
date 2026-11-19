@@ -2,6 +2,7 @@ import { vi } from 'vitest';
 import '@/config';
 import BytePlusRTC from '@byteplus/rtc';
 import openAPIs from '@/app/index';
+import { CALL_TYPE, setCallMode } from '@/app/base';
 import { checkCallConfiguration } from '@/app/preflight';
 import { RtcClient } from './RtcClient';
 
@@ -107,4 +108,18 @@ test('agent shutdown failure still destroys the captured engine', async () => {
   await expect(client.leaveRoom()).rejects.toThrow('Stop failed');
   expect(engine.leaveRoom).toHaveBeenCalledTimes(1);
   expect(BytePlusRTC.destroyEngine).toHaveBeenCalledWith(engine);
+});
+
+test('a retried hangup uses the mode of the active agent', async () => {
+  const client = new RtcClient();
+  client.basicInfo = { room_id: 'room', user_id: 'user' };
+  setCallMode(CALL_TYPE.REAL_TIME);
+  await client.startAgent();
+  openAPIs.StopVoiceChat.mockRejectedValueOnce(new Error('Unavailable'));
+  await expect(client.stopAgent()).rejects.toThrow('Unavailable');
+  setCallMode(CALL_TYPE.VOICE_CHAT);
+  await client.stopAgent();
+  expect(openAPIs.StopVoiceChat).toHaveBeenLastCalledWith(
+    expect.objectContaining({ TaskId: 'user' }), CALL_TYPE.REAL_TIME
+  );
 });

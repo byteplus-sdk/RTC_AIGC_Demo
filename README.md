@@ -1,9 +1,10 @@
-# Conversational AI Demo
+# BytePlus RTC Conversational AI Demo
 
-A React demo for voice and video conversations with AI agents using BytePlus RTC,
-speech recognition, language models, and text-to-speech.
+Talk to an AI agent in your browser, or share your screen and ask it to explain
+what you see. This React demo supports OpenAI Realtime and a Flexible mode
+where you choose the speech recognition, language model, and text-to-speech providers.
 
-[Online demo](https://demo.byteplus.com/rtc/solution/aigc)
+[Try the online demo](https://demo.byteplus.com/rtc/solution/aigc) · [Run locally](#setup-and-configuration)
 
 ## Setup and configuration
 
@@ -15,38 +16,29 @@ npm run setup
 cp .env.example .env.local
 ```
 
-Set `RTC_APP_ID`, `RTC_APP_KEY`, `BYTEPLUS_ACCESS_KEY_ID`, and
-`BYTEPLUS_SECRET_ACCESS_KEY` in `.env.local`.
+In `.env.local`, fill in the four shared settings and the credentials for each mode you want to use.
 
-- Flexible mode: configure credentials for the ASR, LLM, and TTS providers selected in the UI.
-- Realtime mode: set `OPENAI_API_KEY`.
+```dotenv
+# Both modes
+RTC_APP_ID=
+RTC_APP_KEY=
+BYTEPLUS_ACCESS_KEY_ID=
+BYTEPLUS_SECRET_ACCESS_KEY=
 
-To offer **AI Gateway** in Flexible mode, set the secure WebSocket URL
-(`wss://`) and API key for each module you use in `.env.local`.
+# Flexible (default) with ModelArk and BytePlus speech
+BYTEPLUS_MODEL_ENDPOINT_ID=
+BYTEPLUS_MODEL_API_KEY=
+BYTEPLUS_SEED_SPEECH_APP_ID=
+BYTEPLUS_SEED_SPEECH_ACCESS_TOKEN=
 
-| Module | Gateway URL | API key |
-| --- | --- | --- |
-| ASR | `ASR_GATEWAY_API_URL` | `ASR_GATEWAY_API_KEY` |
-| TTS | `TTS_GATEWAY_API_URL` | `TTS_GATEWAY_API_KEY` |
+# Realtime
+OPENAI_API_KEY=
+```
 
-If both modules share a gateway, use the same values for both pairs. In
-**Configure**, users select **AI Gateway** independently for ASR and TTS.
-TTS requires a voice ID and accepts optional pitch, speed, and volume settings.
-Enter extra data and headers as JSON objects in the format your gateway expects.
-The demo forwards the parsed values as supplied. The server checks the selected
-modules during preflight and adds their credentials to the RTC start request.
+For the BytePlus speech example, enable both ASR and TTS for your speech application.
 
-[.env.example](.env.example) lists the provider and optional feature settings.
-Get credentials from the [RTC console](https://console.byteplus.com/rtc/listRTC),
-[IAM key management](https://console.byteplus.com/iam/keymanage), and
-[ModelArk console](https://console.byteplus.com/ark/region:ark+ap-southeast-1/endpoint).
-Enable the selected ASR/TTS services for your speech application.
-Git excludes `.env.local`; restart the services after editing it.
-
-`BYTEPLUS_MODEL_ENDPOINT_ID` sets the default Seed model endpoint.
-`BYTEPLUS_MODEL_ENDPOINTS` maps model names to endpoint IDs as a JSON object.
-You can edit model settings in Configure. `SESSION_DURATION_SECONDS` sets the
-session limit (default: 1800 seconds).
+Credential sources: [RTC console](https://console.byteplus.com/rtc/listRTC), [IAM key management](https://console.byteplus.com/iam/keymanage) and [ModelArk console](https://console.byteplus.com/ark/region:ark+ap-southeast-1/endpoint).
+For other Flexible providers, see [.env.example](.env.example).
 
 ## Quick start
 
@@ -54,15 +46,27 @@ session limit (default: 1800 seconds).
 npm run dev
 ```
 
-This starts the API and web app in Realtime mode. Use `npm run dev:flexible`
-for Flexible mode, then open the web URL printed at startup.
+Open the printed web URL. Select **Call now** for Flexible (default). For Realtime, open **Configure**, choose **End to End Solution**, then select **Apply** and **Call now**.
 
-The web app selects an available port starting at 3000. Set `PORT` to require
-a specific port; `SERVER_PORT` defaults to 3001. Startup reports missing
-configuration and occupied ports. `GET /health` checks API availability.
+## Optional configuration
 
-To run the services in separate terminals, use `npm run dev:server` and
-`npm run dev:web` (or `npm run dev:web:flexible`).
+- **ModelArk.** Set the default Seed endpoint in `BYTEPLUS_MODEL_ENDPOINT_ID` or enter it in **Configure → Model endpoint ID**. To use multiple endpoints, set `BYTEPLUS_MODEL_ENDPOINTS` to a JSON map of model names to endpoint IDs.
+- **Session duration.** `SESSION_DURATION_SECONDS` defaults to 1800.
+- **Local services.** The web port starts at 3000 and the API defaults to 3001. Set `PORT` or `SERVER_PORT` to override them. Restart after editing `.env.local`. To run each service separately, use `npm run dev:server` and `npm run dev:web`. Check API availability with `GET /health`.
+
+### AI Gateway (Flexible)
+
+In `.env.local`, set the secure WebSocket URL (`wss://`) and key for each module you use:
+
+```dotenv
+ASR_GATEWAY_API_URL=
+ASR_GATEWAY_API_KEY=
+TTS_GATEWAY_API_URL=
+TTS_GATEWAY_API_KEY=
+```
+
+In **Configure**, select **AI Gateway** for ASR or TTS. For TTS, enter a voice ID.
+Pitch, speed and volume are optional. Enter extra data and headers as JSON objects.
 
 ## Validation and build
 
