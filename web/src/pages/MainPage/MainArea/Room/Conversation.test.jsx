@@ -40,6 +40,28 @@ test('gateway ASR and Amazon TTS display both speakers when subtitles are enable
 });
 
 
+test('flattened headings start new lines in streaming AI subtitles', () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  const previous = getConfigSnapshot();
+  const store = configureStore({ reducer: { room: roomReducer } });
+  const node = document.createElement('div');
+  const root = createRoot(node);
+  try {
+    store.dispatch(updateAIConfig({ 'Provider.TTS': Provider.OpenAI }));
+    const append = (text, paragraph) =>
+      store.dispatch(setHistoryMsg({ user: config.BotName, text, paragraph }));
+    append('如下： ##', false);
+    act(() => root.render(<ReduxProvider store={store}><Conversation /></ReduxProvider>));
+    act(() => append('# 📌 核心对话内容，示例 `### literal` 等### 🛠️ 顶部状态提示', true));
+    const paragraph = node.querySelector('p');
+    expect(paragraph.textContent).toBe('如下：\n📌 核心对话内容，示例 ### literal 等\n🛠️ 顶部状态提示');
+    expect(paragraph.querySelector('code')?.textContent).toBe('### literal');
+  } finally {
+    act(() => root.unmount());
+    Object.assign(config, previous);
+  }
+});
+
 test.each([true, false])('welcome subtitle loading follows paragraph completion: %s', (paragraph) => {
   global.IS_REACT_ACT_ENVIRONMENT = true;
   const previous = getConfigSnapshot();

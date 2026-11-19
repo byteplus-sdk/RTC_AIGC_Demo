@@ -17,9 +17,21 @@ import USER_AVATAR from '@/assets/img/UserAvatar.png';
 import { Icon, Name } from '@/config/scene';
 import styles from './index.module.less';
 
+function SubtitleParagraph({ children }: React.PropsWithChildren) {
+  return (
+    <p>
+      {React.Children.map(children, (child) =>
+        typeof child === 'string'
+          ? child.replace(/(^|[^#\\])[ \t]*#{2,6}[ \t]+(?=\S|$)/g, '$1\n')
+          : child
+      )}
+    </p>
+  );
+}
+
 const ReplyMarkdown = React.memo(function ReplyMarkdown({ text }: { text: string }) {
   return (
-    <Markdown skipHtml components={{ img: ({ alt }) => alt }}>
+    <Markdown skipHtml components={{ p: SubtitleParagraph, img: ({ alt }) => alt }}>
       {text}
     </Markdown>
   );
