@@ -12,6 +12,44 @@
     flex-shrink: 0;
   }
 }
+.readiness {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  max-width: min(100%, 440px);
+  margin-top: 10px;
+  font-size: 12px;
+  line-height: 20px;
+  color: var(--text-tertiary);
+
+  details {
+    min-width: 0;
+  }
+
+  summary {
+    cursor: pointer;
+  }
+
+  p {
+    margin: 4px 0 0;
+    overflow-wrap: anywhere;
+    color: var(--text-secondary);
+  }
+
+  button {
+    padding: 2px 0;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    color: var(--brand-primary);
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
 @media (max-width: 767px) {
   .wrapper {
     padding: 32px 16px;

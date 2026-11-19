@@ -76,12 +76,15 @@ function Antechamber() {
         className={style['invoke-btn']}
       />
       {readiness && !readiness.ready && (
-        <div role="alert">
-          {readiness.issues.map((issue) => (
-            <p key={issue.stage + issue.message}>{issue.message}</p>
-          ))}
+        <div className={style.readiness} role="alert">
+          <details>
+            <summary>Call setup required</summary>
+            {readiness.issues.map((issue) => (
+              <p key={issue.stage + issue.message}>{issue.message}</p>
+            ))}
+          </details>
           <button type="button" onClick={() => setAttempt((value) => value + 1)}>
-            Check again
+            Retry
           </button>
         </div>
       )}
