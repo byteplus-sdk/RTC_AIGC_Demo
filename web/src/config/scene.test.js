@@ -74,10 +74,13 @@ test('voice interruption maps to the VoiceChat request', () => {
   expect(config.config.Config.InterruptMode).toBe(0);
 });
 
-test('leaving the screen scene disables cached vision configuration', () => {
+test('default and custom characters use camera snapshots for vision-capable models', () => {
+  const cameraVision = { Enable: true, SnapshotConfig: { StreamType: 0 } };
+  expect(config.config.Config.LLMConfig.VisionConfig).toMatchObject(cameraVision);
   Object.assign(config, getSceneSettings(SCENE.SCREEN_READER));
-  expect(config.config.Config.LLMConfig.VisionConfig.Enable).toBe(true);
   Object.assign(config, getSceneSettings(SCENE.CUSTOM));
+  expect(config.config.Config.LLMConfig.VisionConfig).toMatchObject(cameraVision);
+  config.Model = ModelNames.Custom;
   expect(config.config.Config.LLMConfig.VisionConfig.Enable).toBe(false);
 });
 
@@ -99,15 +102,12 @@ test('custom character clears preset prompts and restores base capabilities', ()
   expect(config['Provider.Avatar']).toBe(Provider.None);
   expect(config.avatar).toBe('');
   expect(config.voice).toBe(getSceneSettings(SCENE.TEACHING_ASSISTANT).voice);
-  Object.assign(config, getSceneSettings(SCENE.SCREEN_READER));
-  Object.assign(config, getSceneSettings(SCENE.CUSTOM));
-  expect(config.VisionEnable).toBe(false);
 });
 
 test('tutor selects the Alinna avatar and a vision-capable scene', () => {
   const value = getSceneSettings(SCENE.TUTOR);
   expect(value.avatar).toBe(AKOOL_AVATAR_TYPE.Alinna);
-  expect(value.VisionEnable).toBe(true);
+  expect(isVisionMode(value.Model)).toBe(true);
 });
 
 test('deep thinking is included in Ark requests', () => {

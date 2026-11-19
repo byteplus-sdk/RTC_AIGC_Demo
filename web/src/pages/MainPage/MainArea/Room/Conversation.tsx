@@ -4,6 +4,7 @@
  */
 
 import React, { useRef, useEffect } from 'react';
+import Markdown, { type Components, type ExtraProps } from 'react-markdown';
 import { useSelector } from 'react-redux';
 import { Tag, Spin } from '@arco-design/web-react';
 import { RootState } from '@/store';
@@ -15,6 +16,41 @@ import AIAvatarReadying from '@/components/AIAvatarLoading';
 import USER_AVATAR from '@/assets/img/UserAvatar.png';
 import { Icon, Name } from '@/config/scene';
 import styles from './index.module.less';
+
+const SubtitleSource = React.createContext('');
+
+function SubtitleParagraph({ children, node }: React.PropsWithChildren<ExtraProps>) {
+  const source = React.useContext(SubtitleSource);
+  return (
+    <p>
+      {React.Children.map(children, (child, index) => {
+        const position = node?.children[index]?.position;
+        if (typeof child !== 'string' || !position || !child.includes('##')) return child;
+        const literal = source.slice(position.start.offset, position.end.offset);
+        if (literal !== child) return child;
+        return child.replace(/(^|[^#\\])[ \t]*#{2,6}[ \t]+(?=\S|$)/g, '$1\n');
+      })}
+    </p>
+  );
+}
+
+const subtitleComponents: Components = {
+  p: SubtitleParagraph,
+  a: ({ children, href, title }) => (
+    <a href={href} title={title} target="_blank" rel="noopener noreferrer">
+      {children}
+    </a>
+  ),
+  img: ({ alt }) => alt,
+};
+
+const ReplyMarkdown = React.memo(function ReplyMarkdown({ text }: { text: string }) {
+  return (
+    <SubtitleSource.Provider value={text}>
+      <Markdown components={subtitleComponents}>{text}</Markdown>
+    </SubtitleSource.Provider>
+  );
+});
 
 const lines: (string | React.ReactNode)[] = [];
 
@@ -88,20 +124,17 @@ function Conversation(props: React.HTMLAttributes<HTMLDivElement>) {
                 key={`msg-${index}`}
               >
                 <div className={styles.content}>
-                  {value}
-                  <div className={styles['loading-wrapper']}>
-                    {/* Realtime non-streaming mode */}
-                    {!isRealTimeCallMode() &&
-                    isAIReady &&
-                    !paragraph &&
-                    !isInterrupted &&
-                    (isUserMsg ? isUserTalking : isAITalking) &&
-                    index === msgHistory.length - 1 ? (
+                  {isUserMsg ? value : <ReplyMarkdown text={value} />}
+                  {!isRealTimeCallMode() &&
+                  isAIReady &&
+                  !paragraph &&
+                  !isInterrupted &&
+                  (isUserMsg ? isUserTalking : isAITalking) &&
+                  index === msgHistory.length - 1 ? (
+                    <div className={styles['loading-wrapper']}>
                       <Loading gap={3} className={styles.loading} dotClassName={styles.dot} />
-                    ) : (
-                      ''
-                    )}
-                  </div>
+                    </div>
+                  ) : null}
                 </div>
                 {!isUserMsg && isInterrupted ? (
                   <Tag className={styles.interruptTag}>Interrupted</Tag>

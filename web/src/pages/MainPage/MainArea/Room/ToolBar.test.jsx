@@ -4,7 +4,8 @@ import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import config from '@/config';
-import roomReducer, { updateAIConfig, updateLocalUser, updateScene } from '@/store/slices/room';
+import roomReducer, { updateAIGCState, updateAIConfig, updateLocalUser, updateScene } from '@/store/slices/room';
+import { ModelNames } from '@/config/voiceChat/llm';
 import { getSceneSettings, SCENE } from '@/config/scene';
 import RtcClient from '@/lib/RtcClient';
 import ToolBar from './ToolBar';
@@ -16,6 +17,7 @@ vi.mock('@byteplus/rtc', () => ({
   NetworkQuality: { UNKNOWN: 0 },
 }));
 vi.mock('@/lib/RtcClient', () => ({ default: ({
+  updateAgent: vi.fn(),
   engine: {
     on: vi.fn(),
     off: vi.fn(),
@@ -37,13 +39,11 @@ vi.mock('../../Menu', () => ({ default: () => null }));
 
 let container;
 let root;
-let previousVision;
 let previousEngine;
 let store;
 beforeEach(() => {
   global.IS_REACT_ACT_ENVIRONMENT = true;
   previousEngine = RtcClient.engine;
-  previousVision = config.VisionEnable;
   config.LLMWebSearchEnabled = false;
   config.CustomMcpList = [];
   Object.values(RtcClient.engine).forEach((mock) => mock.mockReset().mockResolvedValue(undefined));
@@ -51,7 +51,7 @@ beforeEach(() => {
   document.body.appendChild(container);
   root = createRoot(container);
   store = configureStore({ reducer: { room: roomReducer } });
-  store.dispatch(updateAIConfig({ VisionEnable: true }));
+  store.dispatch(updateAIConfig(getSceneSettings(SCENE.CUSTOM)));
   act(() =>
     root.render(
       <Provider store={store}>
@@ -63,7 +63,8 @@ beforeEach(() => {
 afterEach(() => {
   act(() => root.unmount());
   container.remove();
-  config.VisionEnable = previousVision;
+  RtcClient.audioBotEnabled = false;
+  RtcClient.updateAgent.mockClear();
   RtcClient.engine = previousEngine;
 });
 
@@ -75,6 +76,56 @@ test('screen sharing releases the published stream when stopped', async () => {
   expect(RtcClient.engine.unpublishScreen).toHaveBeenCalledWith(2);
   expect(RtcClient.engine.stopScreenCapture).toHaveBeenCalled();
   expect(container.querySelector('[aria-label="Share screen"]')).not.toBeNull();
+});
+
+test('screen reader keeps its conversation when sharing starts, stops or ends in the browser', async () => {
+  act(() => {
+    store.dispatch(updateAIConfig(getSceneSettings(SCENE.SCREEN_READER)));
+    store.dispatch(updateScene(SCENE.SCREEN_READER));
+  });
+  RtcClient.audioBotEnabled = true;
+  const click = (label) => act(async () => container.querySelector(`[aria-label="${label}"]`).click());
+  await click('Share screen');
+  await click('Stop sharing screen');
+  await click('Share screen');
+  const [, onEnded] = RtcClient.engine.on.mock.calls.at(-1);
+  await act(async () => onEnded({ kind: 'video', isScreen: true }));
+  expect(store.getState().room.localUser.publishScreen).toBe(false);
+  expect(store.getState().room.aiConfig.VisionSourceType).toBe(1);
+  expect(RtcClient.updateAgent).not.toHaveBeenCalled();
+});
+
+test.each([true, false])('screen sharing retries a failed source update with agent running: %s', async (running) => {
+  act(() => store.dispatch(updateAIGCState({ isAIGCEnable: true })));
+  RtcClient.audioBotEnabled = true;
+  RtcClient.updateAgent.mockImplementationOnce(async () => {
+    RtcClient.audioBotEnabled = running;
+    throw new Error('Source update failed');
+  });
+  const share = () => act(async () => container.querySelector('[aria-label="Share screen"]').click());
+  await share();
+  expect(store.getState().room.aiConfig.VisionSourceType).toBe(0);
+  expect(store.getState().room.localUser.publishScreen).toBe(false);
+  await share();
+  expect(RtcClient.updateAgent).toHaveBeenCalledTimes(2);
+  if (!running) {
+    expect(RtcClient.updateAgent).toHaveBeenLastCalledWith({ preflight: true, agentExpected: true });
+  }
+  expect(store.getState().room.aiConfig.VisionSourceType).toBe(1);
+  expect(store.getState().room.localUser.publishScreen).toBe(true);
+});
+
+test('camera is released when vision becomes unavailable during a source update', async () => {
+  await act(async () => container.querySelector('[aria-label="Share screen"]').click());
+  RtcClient.audioBotEnabled = true;
+  let finishUpdate;
+  RtcClient.updateAgent.mockImplementationOnce(() => new Promise((resolve) => { finishUpdate = resolve; }));
+  await act(async () => container.querySelector('[aria-label="Turn on camera"]').click());
+  expect(store.getState().room.localUser.publishVideo).toBe(true);
+  act(() => store.dispatch(updateAIConfig({ Model: ModelNames.Custom })));
+  await act(async () => finishUpdate());
+  expect(RtcClient.engine.stopVideoCapture).toHaveBeenCalledTimes(1);
+  expect(store.getState().room.localUser.publishVideo).toBe(false);
 });
 
 test('failed screen publication stops capture and permits another attempt', async () => {
@@ -112,13 +163,23 @@ for (const outcome of ['resolve', 'reject']) {
   });
 }
 
-test('camera capture publishes and releases the main video stream', async () => {
+test('camera capture publishes and releases the main video stream within the active conversation', async () => {
+  RtcClient.audioBotEnabled = true;
   await act(async () => container.querySelector('[aria-label="Turn on camera"]').click());
   expect(RtcClient.engine.startVideoCapture).toHaveBeenCalledTimes(1);
   expect(RtcClient.engine.publishStream).toHaveBeenCalledWith(2);
   await act(async () => container.querySelector('[aria-label="Turn off camera"]').click());
   expect(RtcClient.engine.unpublishStream).toHaveBeenCalledWith(2);
   expect(RtcClient.engine.stopVideoCapture).toHaveBeenCalled();
+  expect(RtcClient.updateAgent).not.toHaveBeenCalled();
+});
+
+test('switching to a model without vision releases the camera', async () => {
+  await act(async () => container.querySelector('[aria-label="Turn on camera"]').click());
+  await act(async () => store.dispatch(updateAIConfig({ Model: ModelNames.Custom })));
+  expect(RtcClient.engine.stopVideoCapture).toHaveBeenCalledTimes(1);
+  expect(store.getState().room.localUser.publishVideo).toBe(false);
+  expect(container.querySelector('[aria-label="Turn on camera"]')).toBeNull();
 });
 
 test('switching from camera to screen stops the camera first', async () => {
@@ -138,7 +199,12 @@ test('pending camera acquisition stays attached to its originating engine', asyn
         complete = resolve;
       })
   );
-  await act(async () => container.querySelector('[aria-label="Turn on camera"]').click());
+  const button = container.querySelector('[aria-label="Turn on camera"]');
+  const buttonClass = button.className;
+  await act(async () => button.click());
+  expect(container.querySelector('[aria-label="Turn on camera"]')).toBe(button);
+  expect(button.disabled).toBe(true);
+  expect(button.className).toBe(buttonClass);
   act(() => root.render(null));
   RtcClient.engine = { publishStream: vi.fn(), stopVideoCapture: vi.fn() };
   await act(async () => complete());

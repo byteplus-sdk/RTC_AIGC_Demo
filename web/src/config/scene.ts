@@ -273,7 +273,6 @@ export function getSceneSettings(scene: SCENE): Partial<ConfigFactory> {
     Model: language ? ModelNames.GPT4o : ModelNames.Seed21Turbo,
     'Provider.LLM': language ? Provider.OpenAI : Provider.Byteplus,
     ...(language ? { endPointId: 'gpt-4o-2024-11-20' } : {}),
-    VisionEnable: scene !== SCENE.CUSTOM,
     VisionSourceType:
       scene === SCENE.SCREEN_READER
         ? StreamIndex.STREAM_INDEX_SCREEN
