@@ -4,6 +4,7 @@
  */
 
 import React, { useRef, useEffect } from 'react';
+import Markdown from 'react-markdown';
 import { useSelector } from 'react-redux';
 import { Tag, Spin } from '@arco-design/web-react';
 import { RootState } from '@/store';
@@ -15,6 +16,14 @@ import AIAvatarReadying from '@/components/AIAvatarLoading';
 import USER_AVATAR from '@/assets/img/UserAvatar.png';
 import { Icon, Name } from '@/config/scene';
 import styles from './index.module.less';
+
+const ReplyMarkdown = React.memo(function ReplyMarkdown({ text }: { text: string }) {
+  return (
+    <Markdown skipHtml components={{ img: ({ alt }) => alt }}>
+      {text}
+    </Markdown>
+  );
+});
 
 const lines: (string | React.ReactNode)[] = [];
 
@@ -88,20 +97,17 @@ function Conversation(props: React.HTMLAttributes<HTMLDivElement>) {
                 key={`msg-${index}`}
               >
                 <div className={styles.content}>
-                  {value}
-                  <div className={styles['loading-wrapper']}>
-                    {/* Realtime non-streaming mode */}
-                    {!isRealTimeCallMode() &&
-                    isAIReady &&
-                    !paragraph &&
-                    !isInterrupted &&
-                    (isUserMsg ? isUserTalking : isAITalking) &&
-                    index === msgHistory.length - 1 ? (
+                  {isUserMsg ? value : <ReplyMarkdown text={value} />}
+                  {!isRealTimeCallMode() &&
+                  isAIReady &&
+                  !paragraph &&
+                  !isInterrupted &&
+                  (isUserMsg ? isUserTalking : isAITalking) &&
+                  index === msgHistory.length - 1 ? (
+                    <div className={styles['loading-wrapper']}>
                       <Loading gap={3} className={styles.loading} dotClassName={styles.dot} />
-                    ) : (
-                      ''
-                    )}
-                  </div>
+                    </div>
+                  ) : null}
                 </div>
                 {!isUserMsg && isInterrupted ? (
                   <Tag className={styles.interruptTag}>Interrupted</Tag>

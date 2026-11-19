@@ -23,11 +23,13 @@ test('gateway ASR and Amazon TTS display both speakers when subtitles are enable
   try {
     store.dispatch(updateAIConfig({ 'Provider.ASR': Provider.AiGateway, 'Provider.TTS': Provider.Amazon }));
     store.dispatch(localJoinRoom({ roomId: 'room', user: { userId: 'user' } }));
-    store.dispatch(setHistoryMsg({ user: 'user', text: 'User transcript', paragraph: true }));
-    store.dispatch(setHistoryMsg({ user: config.BotName, text: 'Agent reply', paragraph: true }));
+    store.dispatch(setHistoryMsg({ user: 'user', text: '**User transcript**', paragraph: true }));
+    store.dispatch(setHistoryMsg({ user: config.BotName, text: '### Agent reply\n\n1. **First**\n2. Second\n\n> A quote', paragraph: true }));
     act(() => root.render(<ReduxProvider store={store}><Conversation /></ReduxProvider>));
-    expect(node.textContent).toContain('User transcript');
-    expect(node.textContent).toContain('Agent reply');
+    expect(node.textContent).toContain('**User transcript**');
+    expect(node.querySelector('h3')?.textContent).toBe('Agent reply');
+    expect(node.querySelector('ol li strong')?.textContent).toBe('First');
+    expect(node.querySelector('blockquote')?.textContent).toContain('A quote');
     act(() => store.dispatch(updateIsShowSubtitle(false)));
     expect(node.textContent).not.toContain('User transcript');
     expect(node.textContent).not.toContain('Agent reply');
