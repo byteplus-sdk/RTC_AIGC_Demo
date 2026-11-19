@@ -14,6 +14,8 @@ import Menu from '../../Menu';
 import { RootState } from '@/store';
 import RtcClient from '@/lib/RtcClient';
 import { updateAIConfig, updateLocalUser } from '@/store/slices/room';
+import { isRealTimeCallMode } from '@/app/base';
+import { isVisionMode } from '@/config/voiceChat/llm';
 import { SCENE } from '@/config/scene';
 import CameraOpenSVG from '@/assets/img/CameraOpen.svg';
 import CameraCloseSVG from '@/assets/img/CameraClose.svg';
@@ -39,13 +41,16 @@ function ToolBar(props: React.HTMLAttributes<HTMLDivElement>) {
     [dispatch]
   );
   const mediaBusy = useRef(false);
+  const realtime = isRealTimeCallMode();
+  const supportsVision = realtime ? scene !== SCENE.CUSTOM : isVisionMode(aiConfig.Model);
+  const canUseCamera = scene !== SCENE.SCREEN_READER && (realtime || supportsVision);
   const cameraBlocked =
-    scene === SCENE.SCREEN_READER ||
+    !canUseCamera ||
     aiConfig.LLMWebSearchEnabled ||
     aiConfig.CustomMcpList.some((item) => item.URL?.trim());
   const [screenLoading, setScreenLoading] = useState(false);
   const canShareScreen =
-    aiConfig.VisionEnable &&
+    supportsVision &&
     !aiConfig.LLMWebSearchEnabled &&
     !aiConfig.CustomMcpList.some((item) => item.URL?.trim());
   const mountedRef = useRef(false);
@@ -174,7 +179,13 @@ function ToolBar(props: React.HTMLAttributes<HTMLDivElement>) {
       if (mountedRef.current && RtcClient.engine === engine) {
         dispatch(updateLocalUser({ publishVideo: !cameraPublished }));
         dispatch(updateAIConfig({ VisionSourceType: StreamIndex.STREAM_INDEX_MAIN }));
-        if (aiConfig.VisionEnable && RtcClient.audioBotEnabled) await RtcClient.updateAgent();
+        if (
+          supportsVision &&
+          aiConfig.VisionSourceType !== StreamIndex.STREAM_INDEX_MAIN &&
+          RtcClient.audioBotEnabled
+        ) {
+          await RtcClient.updateAgent();
+        }
       }
     } catch (error) {
       await engine.unpublishStream(MediaType.VIDEO).catch(() => {});
@@ -222,7 +233,7 @@ function ToolBar(props: React.HTMLAttributes<HTMLDivElement>) {
       >
         <img src={isAudioPublished ? MicOpenSVG : MicCloseSVG} className={style.btn} alt="" />
       </button>
-      {scene !== SCENE.SCREEN_READER && (
+      {canUseCamera && (
         <Tooltip
           content={
             cameraBlocked ? 'Camera is unavailable while web search or MCP is enabled.' : undefined

@@ -61,7 +61,6 @@ import {
 import {
   ModelMap,
   ModelNames,
-  isVisionMode,
   isLlmProviderAllowedForWebSearch,
 } from '@/config/voiceChat/llm';
 import { AvatarMap, RealtimeAvatarMap } from '@/config/voiceChat/avatar';
@@ -502,7 +501,6 @@ function AISettings() {
                       Model: name,
                       endPointId:
                         name === prev.Model ? prev.endPointId : models[name]?.endPointId || '',
-                      VisionEnable: isVisionMode(name),
                       'Provider.LLM': provider,
                     }));
                   }}

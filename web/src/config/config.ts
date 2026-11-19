@@ -12,7 +12,7 @@ import { isLlmProviderAllowedForWebSearch, ModuleType, Provider } from './basic'
 
 import type { IVoiceType } from './voiceChat/tts';
 import { getSeedTtsVersionFromVoice } from './voiceChat/tts';
-import { ModelNames, THINKING_TYPE, isDeepThinkingMode } from './voiceChat/llm';
+import { ModelNames, THINKING_TYPE, isDeepThinkingMode, isVisionMode } from './voiceChat/llm';
 import type { SeedVersion } from './voiceChat/seedVersion';
 import type { LlmCustomMcpEntry } from './voiceChat/mcpManager';
 
@@ -45,8 +45,6 @@ export class ConfigFactory {
    *       Or leave it undefined, demo will generate it automatically by calling api (in src/lib/useCommon.ts), and this require your RTC_APP_KEY in /Server/sensitve.js.
    */
   Token = undefined;
-
-  VisionEnable = false;
 
   VisionSourceType = StreamIndex.STREAM_INDEX_MAIN;
 
@@ -298,7 +296,7 @@ export class ConfigFactory {
       Object.assign(params.Config.LLMConfig, {
         VisionConfig: {
           Enable:
-            this.VisionEnable &&
+            isVisionMode(this.Model) &&
             !this.LLMWebSearchEnabled &&
             !this.CustomMcpList.some((item) => item.URL?.trim()),
           SnapshotConfig: {

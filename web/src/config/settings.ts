@@ -9,7 +9,6 @@ export const getSettings = () => ({
   'Provider.Avatar': config['Provider.Avatar'],
   aiGateway: config.aiGateway,
   avatar: config.avatar,
-  VisionEnable: config.VisionEnable,
   VisionSourceType: config.VisionSourceType,
   Model: config.Model,
   CustomModelURL: config.CustomModelURL,
