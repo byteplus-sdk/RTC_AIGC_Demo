@@ -12,7 +12,7 @@ Use Node.js 22 (>=22.13) and npm 10. Choose one setup path below.
 
 ### CLI setup
 
-The CLI fills in `.env.local` with your RTC app credentials and the resources you choose for Flexible (model and speech), Realtime (your OpenAI API key), or both.
+The CLI saves your RTC settings and your choices for Flexible (model and speech resources), Realtime (OpenAI API key), or both in `.env.local`.
 
 ```shell
 npm install -g @byteplus/convo-cli
@@ -20,6 +20,8 @@ convo-cli auth login --browser=open
 convo-cli agent resources --write
 convo-cli dev
 ```
+
+> Leave `BYTEPLUS_ACCESS_KEY_ID`, `BYTEPLUS_SECRET_ACCESS_KEY`, and `BYTEPLUS_MODEL_API_KEY` empty — the CLI signs requests with temporary credentials and resolves your ModelArk key (`BYTEPLUS_MODEL_API_KEY_ID`) at runtime.
 
 ### Manual setup
 
@@ -31,7 +33,7 @@ npm run setup
 cp .env.example .env.local
 ```
 
-In `.env.local`, fill in the four shared settings and the credentials for each mode you want to use.
+Fill in the shared settings and the credentials for your chosen mode in `.env.local`.
 
 ```dotenv
 # Both modes
