@@ -5,7 +5,7 @@
 
 const Koa = require('koa');
 const bodyParser = require('koa-bodyparser');
-const cors = require('koa2-cors');
+const { companionCors } = require('./requestOrigin');
 if (require.main === module) {
   require('dotenv').config({ path: process.env.DEMO_ENV_FILE || require('path').resolve(__dirname, '../.env.local') });
 }
@@ -29,12 +29,6 @@ function createApp({ fetchImpl, env = process.env, probeSpeech } = {}) {
   app.stopActiveAgents = lifecycle.stop;
   app.abortAgentRequests = () => controller.abort();
 
-  app.use(
-    cors({
-      origin: '*',
-    })
-  );
-
   app.use(async (ctx, next) => {
     try {
       await next();
@@ -50,6 +44,7 @@ function createApp({ fetchImpl, env = process.env, probeSpeech } = {}) {
     }
   });
 
+  app.use(companionCors(config, env));
   app.use(bodyParser());
 
   app.use(async (ctx) => {

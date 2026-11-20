@@ -52,6 +52,8 @@ OPENAI_API_KEY=
 
 For the BytePlus speech example, enable both ASR and TTS for your speech application.
 
+For a custom LLM, set `CUSTOM_LLM_URL` to its exact HTTPS endpoint and `CUSTOM_LLM_API_KEY` to the corresponding credential.
+
 Credential sources: [RTC console](https://console.byteplus.com/rtc/listRTC), [IAM key management](https://console.byteplus.com/iam/keymanage) and [ModelArk console](https://console.byteplus.com/ark/region:ark+ap-southeast-1/endpoint).
 For other Flexible providers, see [.env.example](.env.example).
 
@@ -97,7 +99,9 @@ npm run build
 ```
 
 The build writes to `web/dist/`. Set `REACT_APP_AIGC_PROXY_HOST` to the deployed
-API URL before building. For Flexible mode with ModelArk, set
+API URL before building. On the API server, set the same `REACT_APP_AIGC_PROXY_HOST`
+and set `DEMO_WEB_ORIGIN` to the exact frontend origin (for example,
+`https://demo.example.com`). For Flexible mode with ModelArk, set
 `REACT_APP_MODEL_ENDPOINT_ID` to populate the default endpoint.
 `REACT_APP_RTC_APP_ID` overrides the AppID returned by the API server.
 

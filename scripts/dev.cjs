@@ -168,12 +168,13 @@ async function main(args = process.argv.slice(2)) {
   let port;
   if (target !== 'server') {
     port = await selectWebPort(env);
+    env.PORT = String(port);
     try {
       specs.push({ name: 'web', args: [packageBin(webRequire, 'vite', 'vite'), '--clearScreen', 'false'], env: webEnvironment(env, port) });
     } catch { throw new Error('Web dependencies are missing. Run npm run setup in the repository root.'); }
   }
   console.log(`[dev] Configuration: ${envFile}${loaded.error ? ' (using environment variables)' : ''}`);
-  if (port && !env.PORT?.trim() && port !== 3000) {
+  if (port && !process.env.PORT?.trim() && port !== 3000) {
     console.log(`[web] Default port unavailable; selected ${port}.`);
   }
   startChildren(specs);
