@@ -1,27 +1,29 @@
 const { required } = require('./config');
 const { validateAiGatewayParams } = require('../shared/aiGateway.mjs');
 
-function isGoogleLlm(config) {
-  try {
-    return new URL(config?.Url).origin === 'https://generativelanguage.googleapis.com';
-  } catch {
-    return false;
+function getLlmCredentialField(config, env) {
+  const address = readCanonicalField(config, 'Url');
+  const provider = readCanonicalField(config, 'Provider');
+  const mode = readCanonicalField(config, 'Mode');
+  if (provider === 'BytePlus' || mode === 'BytePlusArk') {
+    if (address !== undefined) throw new Error('BytePlus LLM uses EndPointId instead of Url');
+    return 'BYTEPLUS_MODEL_API_KEY';
   }
-}
-
-function getLlmCredentialField(config) {
-  if (config?.Provider === 'BytePlus' || config?.Mode === 'BytePlusArk') return 'BYTEPLUS_MODEL_API_KEY';
-  if (isGoogleLlm(config)) return 'GOOGLE_LLM_API_KEY';
-  if (config?.Provider === 'OpenAI') return 'OPENAI_API_KEY';
-  try {
-    if (new URL(config?.Url).origin === 'https://api.openai.com') return 'OPENAI_API_KEY';
-  } catch {}
+  if (provider === 'OpenAI' && address === undefined) return 'OPENAI_API_KEY';
+  const url = typeof address === 'string' && URL.parse(address);
+  if (!url || url.protocol !== 'https:' || !/^https:\/\//i.test(address) ||
+      /[\\\s]/.test(address) || url.username || url.password || address.split('/')[2].includes('@')) {
+    throw new Error('LLMConfig.Url must be an HTTPS URL without credentials');
+  }
+  if (url.origin === 'https://api.openai.com') return 'OPENAI_API_KEY';
+  if (url.origin === 'https://generativelanguage.googleapis.com') return 'GOOGLE_LLM_API_KEY';
+  if (address !== env.CUSTOM_LLM_URL?.trim()) throw new Error('LLMConfig.Url must match CUSTOM_LLM_URL');
   return 'CUSTOM_LLM_API_KEY';
 }
 
 function getLlmApiKey(config, env) {
-  const field = getLlmCredentialField(config);
-  return env[field] || (field === 'CUSTOM_LLM_API_KEY' ? env.OPENAI_API_KEY : undefined);
+  const field = getLlmCredentialField(config, env);
+  return required(env[field], field);
 }
 
 function getSpeechProviderKey(provider) {
@@ -79,10 +81,8 @@ function validateProviderConfig(action, body, env) {
       BytePlus: speech, byteplus_Bidirectional_streaming: speech, Amazon: amazon, amazon, Google: google,
       OpenAI: ['OPENAI_API_KEY'], openai: ['OPENAI_API_KEY'],
     }[config?.TTSConfig?.Provider] || []));
-    if (config?.LLMConfig) {
-      const field = getLlmCredentialField(config.LLMConfig);
-      required(getLlmApiKey(config.LLMConfig, env), field === 'CUSTOM_LLM_API_KEY' ? 'CUSTOM_LLM_API_KEY or OPENAI_API_KEY' : field);
-    }
+    const llm = readCanonicalField(config, 'LLMConfig');
+    if (llm) getLlmApiKey(llm, env);
     if (config?.WebSearchAgentConfig?.Enable === true) {
       required(env.ASKECHO_API_KEY, 'ASKECHO_API_KEY');
       const params = JSON.parse(config.WebSearchAgentConfig.ParamsString || '{}');
@@ -102,4 +102,4 @@ function validateProviderConfig(action, body, env) {
   for (const field of new Set(fields)) required(env[field], field);
 }
 
-module.exports = { validateProviderConfig, isGoogleLlm, getLlmCredentialField, getLlmApiKey, getSpeechProviderKey, getGatewayCredentials, validateGatewayConfig };
+module.exports = { validateProviderConfig, getLlmCredentialField, getLlmApiKey, getSpeechProviderKey, getGatewayCredentials, validateGatewayConfig };

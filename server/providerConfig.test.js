@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { isGoogleLlm, validateProviderConfig } = require('./providerConfig');
+const { validateProviderConfig } = require('./providerConfig');
 const { injectSensitiveInfo } = require('./sensitive');
 
 test('Google model validation requires its own key', () => {
@@ -17,9 +17,6 @@ test('Google credentials are injected for the exact Google origin', () => {
   } } };
   injectSensitiveInfo(body, true, { env: { GOOGLE_LLM_API_KEY: 'google-test-key' } });
   assert.equal(body.Config.LLMConfig.APIKey, 'google-test-key');
-  assert.equal(isGoogleLlm({ Url: 'https://generativelanguage.googleapis.com.example.com/' }), false);
-  assert.equal(isGoogleLlm({ Url: 'http://generativelanguage.googleapis.com/' }), false);
-  assert.equal(isGoogleLlm({ Url: 'invalid' }), false);
 });
 
 test('enabled avatars require the selected provider credentials', () => {

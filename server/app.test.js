@@ -35,6 +35,48 @@ test('health reports availability without contacting upstream services', async (
   assert.deepEqual(await res.json(), { ok: true });
 });
 
+test('companion accepts configured browser origins and local native clients', async t => {
+  const base = await serve(t, { env: { ...env, PORT: '4300', HOST: 'demo.local' } });
+  for (const origin of [base, 'http://localhost:4300', 'http://[::1]:4300', 'http://demo.local:4300']) {
+    const response = await fetch(base + '/runtimeConfig', {
+      method: 'OPTIONS', headers: { Origin: origin, 'Access-Control-Request-Method': 'POST' },
+    });
+    assert.equal(response.status, 204);
+    assert.equal(response.headers.get('access-control-allow-origin'), origin);
+  }
+  const proxied = await fetch(base + '/runtimeConfig', {
+    headers: { Host: 'demo.local:4300', Origin: 'http://demo.local:4300' },
+  });
+  assert.equal(proxied.status, 200);
+  const native = await fetch(base + '/health');
+  assert.equal(native.status, 200);
+  assert.equal(native.headers.get('access-control-allow-origin'), null);
+});
+
+test('deployed frontend uses its configured origin and API hostname', async t => {
+  const origin = 'https://demo.example';
+  const base = await serve(t, { env: { ...env, DEMO_WEB_ORIGIN: origin, REACT_APP_AIGC_PROXY_HOST: 'https://api.example' } });
+  const res = await fetch(base + '/runtimeConfig', { headers: { Host: 'api.example', Origin: origin } });
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get('access-control-allow-origin'), origin);
+});
+
+test('companion rejects unknown hosts and origins before handling a request', async t => {
+  const base = await serve(t, { fetchImpl: () => assert.fail('unexpected upstream call') });
+  for (const headers of [
+    { Origin: 'https://other.example' }, { Origin: 'null' }, { Origin: 'http://localhost:4432' },
+    { Host: 'other.example:' + new URL(base).port },
+    { Host: 'other.example:' + new URL(base).port, Origin: base },
+  ]) {
+    for (const method of ['POST', 'OPTIONS']) {
+      const response = await fetch(base + '/preflight?action=StartVoiceChat', { method,
+        headers: { ...headers, 'Access-Control-Request-Method': 'POST' } });
+      assert.equal(response.status, 403);
+      assert.equal(response.headers.get('access-control-allow-origin'), null);
+    }
+  }
+});
+
 for (const action of [
   'StartVoiceChat',
   'StopVoiceChat',
@@ -53,7 +95,7 @@ for (const action of [
     });
     const flexible = action === 'StartVoiceChat' || action === 'StopVoiceChat';
     const body = flexible
-      ? { Config: { LLMConfig: { Mode: 'CustomLLM' } } }
+      ? { Config: { LLMConfig: { Provider: 'OpenAI' } } }
       : { LLMConfig: { Token: 'client-token' } };
     const res = await post(`${base}/proxyAIGCFetch?action=${action}`, body);
     assert.equal(res.status, 200);
@@ -334,7 +376,7 @@ test('missing provider credentials return a named configuration error before for
   assert.equal((await res.json()).Result, 'OPENAI_API_KEY is required');
 });
 
-test('provider selection controls credential requirements and Custom LLM fallback', () => {
+test('provider selection controls credential requirements', () => {
   for (const [category, selection, expected] of [
     ['ASRConfig', { Provider: 'amazon' }, 'AWS_ACCESS_KEY_ID'],
     ['ASRConfig', { Provider: 'GoogleV2' }, 'GOOGLE_RECOGNIZER_PATH'],
@@ -348,9 +390,11 @@ test('provider selection controls credential requirements and Custom LLM fallbac
     }), new RegExp(expected));
   }
   const custom = { Config: { LLMConfig: { Mode: 'CustomLLM' } } };
-  assert.doesNotThrow(() => validateProviderConfig('StartVoiceChat', custom, env));
-  assert.doesNotThrow(() => validateProviderConfig('StartVoiceChat', custom, { CUSTOM_LLM_API_KEY: 'custom' }));
-  assert.throws(() => validateProviderConfig('StartVoiceChat', custom, {}), /CUSTOM_LLM_API_KEY or OPENAI_API_KEY/);
+  assert.throws(() => validateProviderConfig('StartVoiceChat', custom, env), /LLMConfig.Url/);
+  custom.Config.LLMConfig.Url = 'https://model.example/completions';
+  const customEnv = { ...env, CUSTOM_LLM_URL: custom.Config.LLMConfig.Url };
+  assert.throws(() => validateProviderConfig('StartVoiceChat', custom, customEnv), /CUSTOM_LLM_API_KEY/);
+  assert.doesNotThrow(() => validateProviderConfig('StartVoiceChat', custom, { ...customEnv, CUSTOM_LLM_API_KEY: 'test-custom' }));
 });
 
 

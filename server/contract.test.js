@@ -5,7 +5,7 @@ const { validateProviderConfig, getLlmCredentialField, getLlmApiKey } = require(
 
 const env = {
   BYTEPLUS_MODEL_API_KEY: 'test-ark', OPENAI_API_KEY: 'test-openai',
-  CUSTOM_LLM_API_KEY: 'test-custom', GOOGLE_LLM_API_KEY: 'test-google',
+  CUSTOM_LLM_API_KEY: 'test-custom', CUSTOM_LLM_URL: 'https://custom.example.com/chat/completions', GOOGLE_LLM_API_KEY: 'test-google',
   BYTEPLUS_SEED_SPEECH_APP_ID: 'test-speech-app', BYTEPLUS_SEED_SPEECH_ACCESS_TOKEN: 'test-speech-token',
   AWS_ACCESS_KEY_ID: 'test-amazon-id', AWS_SECRET_ACCESS_KEY: 'test-amazon-secret',
   GOOGLE_CREDENTIALS_JSON: '{"type":"service_account"}', GOOGLE_RECOGNIZER_PATH: 'projects/test/locations/global/recognizers/test',
@@ -25,20 +25,30 @@ for (const [llm, field] of [
   [{ Mode: 'CustomLLM', Url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions' }, 'GOOGLE_LLM_API_KEY'],
 ]) {
   test(`LLM ${field} validates and injects its own credential`, () => {
-    assert.equal(getLlmCredentialField(llm), field);
+    assert.equal(getLlmCredentialField(llm, env), field);
     assert.equal(getLlmApiKey(llm, env), env[field]);
     const body = { Config: { LLMConfig: { ...llm } } };
     validateProviderConfig('StartVoiceChat', body, env);
-    assert.throws(() => validateProviderConfig('StartVoiceChat', body, {}), new RegExp(field));
+    assert.throws(() => validateProviderConfig('StartVoiceChat', body, { ...env, [field]: '' }), new RegExp(field));
     inject(body);
     assert.equal(body.Config.LLMConfig.APIKey, env[field]);
   });
 }
 
-test('Google credential routing uses the exact HTTPS origin', () => {
-  for (const Url of ['https://generativelanguage.googleapis.com.example.com/', 'http://generativelanguage.googleapis.com/']) {
-    assert.equal(getLlmCredentialField({ Mode: 'CustomLLM', Url }), 'CUSTOM_LLM_API_KEY');
+test('LLM credential routing requires a configured destination', () => {
+  for (const llm of [
+    { Provider: 'OpenAI', Url: env.CUSTOM_LLM_URL + '/other' },
+    { Mode: 'CustomLLM', Url: 'http://generativelanguage.googleapis.com/' },
+    { Provider: 'OpenAI', Url: 'https://user@api.openai.com/' },
+    { Provider: 'OpenAI', URL: 'https://api.openai.com/' },
+    { Mode: 'CustomLLM' },
+    { Mode: 'BytePlusArk', Url: env.CUSTOM_LLM_URL },
+    { Provider: 'OpenAI', mode: 'CustomLLM' },
+  ]) {
+    assert.throws(() => getLlmCredentialField(llm, env), /Url|Mode/);
   }
+  assert.throws(() => getLlmApiKey({ Provider: 'OpenAI', Url: env.CUSTOM_LLM_URL },
+    { ...env, CUSTOM_LLM_API_KEY: '' }), /CUSTOM_LLM_API_KEY/);
 });
 
 for (const [Provider, params, expected] of [
