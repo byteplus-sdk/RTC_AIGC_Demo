@@ -135,29 +135,4 @@ Refer to [OpenAPI Updates](https://docs.byteplus.com/en/docs/byteplus-rtc/docs-1
 
 ### Release Notes
 
-#### [1.5.0]
-- 2026-10-22
-    - Refresh the UI with scene presets, multilingual voices, screen reading, and AI tutor avatars.
-    - Add model configuration, deep thinking, vision input selection, web search, and MCP settings.
-    - Upgrade the RTC Web SDK to 4.69.3 and add a configurable session timer.
-    - Align provider parameters, credentials, and avatar configuration with the VoiceChat APIs; add request contract tests.
-
-#### [1.4.0]
-- 2026-07-29
-    - Support Akool digital human
-- 2026-01-27
-    - Upgrade API endpoints and region
-- 2025-11-06
-    - Support BytePlus Avatar
-
-- 2025-08-04
-    - Upgrade SDK version to 4.67.2
-    - Support BytePlus ASR（Speech-to-Text (ASR) - Streaming）
-    - fix AI Settings UI
-- 2025-07-08
-    - Upgrade SDK version to 4.66.20 
-- 2025-06-16
-    - Updated Demo guide and fixed some parameter errors.
-    - Modify the Endpoint ID of Byteplus Ark Model. which needs to be filled in by the user.
-- 2025-06-06
-    - Initial Release
+See the [Demo changelog](CHANGELOG.md).
