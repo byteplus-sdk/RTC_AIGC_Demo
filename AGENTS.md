@@ -2,7 +2,7 @@
 
 ## Branches and scope
 
-- Check the current branch, working tree, and target base before starting. Create `codex/` branches from the latest `origin/master` for routine fixes.
+- Check the current branch, working tree, and target base before starting. Create `fix/` branches from the latest `origin/master` for routine fixes.
 - Preserve existing uncommitted changes and save the working tree before switching branches.
 - Keep fixes, CLI integration, and IGA Pages migration in separate branches and commits. Follow the scope of the current task.
 
@@ -33,3 +33,10 @@ For documentation changes, check commands, links, and configuration names, then 
 - Follow the existing code style. Use comments for constraints that need explanation. Describe current behavior in code and documentation.
 - Keep README content focused on installation, configuration, usage, and troubleshooting. Consolidate repeated instructions.
 - Use concrete facts and actions. Omit decorative wording, forced contrasts, and accounts of the editing process.
+
+## Changelog
+
+- In the same PR as a user-facing feature, fix, security update, or change to setup, deployment, or upgrades, add an English entry under `Unreleased` in [CHANGELOG.md](CHANGELOG.md). Group entries by date (YYYY-MM-DD), newest first. For backfilled entries, use the date the change landed on the target branch. Describe the effect on users. Group related dependency security fixes in one entry.
+- Reviewers check the entry against the PR. Refactors, tests, and routine dependency updates with no user-facing effect can mark the changelog check as not applicable.
+- For a Demo release, review the first-parent history of `master` since the previous release commit, including direct commits. Move the entries into a dated version section and align the root package, web package, and version displayed in the UI. Tag the release commit and use the same entries for the GitHub Release.
+- Record CLI-template changes in the CLI release notes when the CLI updates its pinned Demo commit.
